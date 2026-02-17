@@ -18,7 +18,7 @@ server_running = False
 error_log = deque(maxlen=100)
 
 def log_error(message, exc=None):
-    timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     entry = f"[{timestamp}] {message}"
     if exc is not None:
         entry += f" | {type(exc).__name__}: {exc}"
@@ -46,6 +46,9 @@ def start_server():
         result = subprocess.run(["python3", "actions/start_server.py"], capture_output=True, text=True)
         if result.returncode == 0:
             output = json.loads(result.stdout)
+            logs = output.get("log", [])
+            for log_entry in logs:
+                error_log.append(log_entry)
             return output.get("success", False), output.get("message", "")
         else:
             log_error(f"start_server.py failed: {result.stderr}")
