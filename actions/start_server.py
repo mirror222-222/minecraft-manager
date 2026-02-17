@@ -17,30 +17,44 @@ def start_server():
         if not os.path.exists(server_dir):
             os.makedirs(server_dir, exist_ok=True)
         server_jar = os.path.join(server_dir, "server.jar")
-        if not os.path.exists(server_jar):
-            # Fetch the latest Minecraft server JAR URL
-            import urllib.request
-            try:
-                version_manifest_url = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
-                with urllib.request.urlopen(version_manifest_url) as response:
-                    manifest = response.read().decode()
-                manifest_json = json.loads(manifest)
-                latest_release = manifest_json["latest"]["release"]
-                version_info = next(v for v in manifest_json["versions"] if v["id"] == latest_release)
-                version_url = version_info["url"]
-                with urllib.request.urlopen(version_url) as response:
-                    version_data = response.read().decode()
-                version_json = json.loads(version_data)
-                url = version_json["downloads"]["server"]["url"]
-            except Exception as e:
-                msg = f"Failed to fetch latest server JAR URL: {e}"
-                log_error(msg)
-                return False, msg
+        version_file = os.path.join(server_dir, "server.jar.version")
+        import urllib.request
+        # Fetch latest version info
+        try:
+            version_manifest_url = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
+            with urllib.request.urlopen(version_manifest_url) as response:
+                manifest = response.read().decode()
+            manifest_json = json.loads(manifest)
+            latest_release = manifest_json["latest"]["release"]
+            version_info = next(v for v in manifest_json["versions"] if v["id"] == latest_release)
+            version_url = version_info["url"]
+            with urllib.request.urlopen(version_url) as response:
+                version_data = response.read().decode()
+            version_json = json.loads(version_data)
+            url = version_json["downloads"]["server"]["url"]
+        except Exception as e:
+            msg = f"Failed to fetch latest server JAR URL: {e}"
+            log_error(msg)
+            return False, msg
+
+        need_download = False
+        current_version = None
+        if os.path.exists(server_jar) and os.path.exists(version_file):
+            with open(version_file) as vf:
+                current_version = vf.read().strip()
+            if current_version != latest_release:
+                need_download = True
+        else:
+            need_download = True
+
+        if need_download:
             dl = subprocess.run(["wget", "-O", server_jar, url], capture_output=True, text=True)
             if dl.returncode != 0:
                 msg = f"Download failed: {dl.stderr}"
                 log_error(msg)
                 return False, msg
+            with open(version_file, "w") as vf:
+                vf.write(latest_release)
         with open(os.path.join(server_dir, "eula.txt"), "w") as f:
             f.write("eula=true\n")
         props = os.path.join(server_dir, "server.properties")
