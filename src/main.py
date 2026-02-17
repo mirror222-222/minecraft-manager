@@ -160,7 +160,10 @@ def stop():
 def whitelist():
     try:
         data = json.loads(request.form["whitelistBox"])
-    except Exception:
+        print("DEBUG: Received whitelistBox:", data)
+    except Exception as e:
+        log_error(f"Invalid JSON in whitelist: {e}")
+        print(f"DEBUG: Invalid JSON in whitelist: {e}")
         status_message = "Invalid JSON in whitelist."
         status_error = True
         return render_template(
