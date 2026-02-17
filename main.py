@@ -17,8 +17,9 @@ user_check_interval = 60  # seconds
 server_running = False
 error_log = deque(maxlen=100)
 
+from datetime import datetime, UTC
 def log_error(message, exc=None):
-    timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     entry = f"[{timestamp}] {message}"
     if exc is not None:
         entry += f" | {type(exc).__name__}: {exc}"
