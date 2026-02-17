@@ -14,6 +14,8 @@ def log_error(message, exc=None):
 def start_server():
     try:
         server_dir = "/opt/minecraft"
+        if not os.path.exists(server_dir):
+            os.makedirs(server_dir, exist_ok=True)
         server_jar = os.path.join(server_dir, "server.jar")
         if not os.path.exists(server_jar):
             # Fetch the latest Minecraft server JAR URL

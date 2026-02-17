@@ -4,7 +4,8 @@
 
 # Install prerequisites: curl, python3, default-jre-headless
 echo "Installing prerequisites: curl, python3, default-jre-headless..."
-apt update && apt install -y curl python3 default-jre-headless git
+apt update && apt upgrade -y
+apt install -y curl python3 default-jre-headless git
 
 
 
