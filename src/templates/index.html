@@ -7,15 +7,24 @@
 </head>
 <body>
     <h1>Minecraft Manager</h1>
-    <div id="status"></div>
-    <button id="startBtn">Start Minecraft</button>
-    <button id="stopBtn">Stop Minecraft</button>
+    {% if status_message %}
+    <div id="status" style="color: {{ 'red' if status_error else 'green' }};">{{ status_message }}</div>
+    {% endif %}
+    <form method="post" action="/start">
+        <button type="submit">Start Minecraft</button>
+    </form>
+    <form method="post" action="/stop">
+        <button type="submit">Stop Minecraft</button>
+    </form>
     <h2>Edit Whitelist</h2>
-    <textarea id="whitelistBox" rows="10" cols="60"></textarea><br>
-    <button id="submitWhitelist">Submit Whitelist</button>
+    <form method="post" action="/whitelist">
+        <textarea name="whitelistBox" rows="10" cols="60">{{ whitelist_json }}</textarea><br>
+        <button type="submit">Submit Whitelist</button>
+    </form>
     <h2>Error Log (last 100)</h2>
-    <textarea id="errorLogBox" rows="10" cols="60" readonly></textarea><br>
-    <button id="clearErrorsBtn">Clear Errors</button>
-    <script src="/static/app.js"></script>
+    <textarea rows="10" cols="60" readonly>{% for err in error_log %}{{ err }}\n{% endfor %}</textarea><br>
+    <form method="post" action="/errors/clear">
+        <button type="submit">Clear Errors</button>
+    </form>
 </body>
 </html>

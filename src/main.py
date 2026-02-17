@@ -1,5 +1,6 @@
 
 from flask import Flask, render_template, request, redirect, url_for, jsonify
+
 import threading
 import time
 import os
@@ -40,135 +41,148 @@ def get_connected_users():
     # TODO: Implement logic to check connected users (e.g., query server or parse logs)
     return 0
 
+
 def start_server():
-    global server_running
     try:
-        # 1. Run apt update
-        apt = subprocess.run(["apt", "update"], capture_output=True, text=True)
-        if apt.returncode != 0:
-            msg = f"apt update failed: {apt.stderr}"
-            log_error(msg)
-            return False, msg
-
-        # 2. Check/download Minecraft server jar (placeholder logic)
-        # TODO: Replace with real version check and download
-        server_jar = "server.jar"
-        if not os.path.exists(server_jar):
-            # Download latest server jar (placeholder URL)
-            url = "https://launcher.mojang.com/v1/objects/placeholder/server.jar"
-            dl = subprocess.run(["wget", "-O", server_jar, url], capture_output=True, text=True)
-            if dl.returncode != 0:
-                msg = f"Download failed: {dl.stderr}"
-                log_error(msg)
-                return False, msg
-
-        # 3. Ensure eula.txt exists and is set to eula=true
-        with open("eula.txt", "w") as f:
-            f.write("eula=true\n")
-
-        # 4. Ensure allowlist-only mode (server.properties)
-        props = "server.properties"
-        if os.path.exists(props):
-            with open(props) as f:
-                lines = f.readlines()
-            found = False
-            for i, line in enumerate(lines):
-                if line.startswith("enforce-whitelist"):
-                    lines[i] = "enforce-whitelist=true\n"
-                    found = True
-            if not found:
-                lines.append("enforce-whitelist=true\n")
-            with open(props, "w") as f:
-                f.writelines(lines)
+        result = subprocess.run(["python3", "src/actions/start_server.py"], capture_output=True, text=True)
+        if result.returncode == 0:
+            output = json.loads(result.stdout)
+            return output.get("success", False), output.get("message", "")
         else:
-            with open(props, "w") as f:
-                f.write("enforce-whitelist=true\n")
-
-        # 5. Start Minecraft server service (systemd)
-        start = subprocess.run(["systemctl", "start", "minecraft"], capture_output=True, text=True)
-        if start.returncode != 0:
-            msg = f"Failed to start server: {start.stderr}"
-            log_error(msg)
-            return False, msg
-
-        server_running = True
-        return True, "Server started"
+            log_error(f"start_server.py failed: {result.stderr}")
+            return False, result.stderr
     except Exception as e:
         log_error("start_server exception", e)
         return False, str(e)
 
+
 def stop_server():
-    global server_running
     try:
-        stop = subprocess.run(["systemctl", "stop", "minecraft"], capture_output=True, text=True)
-        if stop.returncode != 0:
-            msg = f"Failed to stop server: {stop.stderr}"
-            log_error(msg)
-            return False, msg
-        server_running = False
-        return True, "Server stopped"
+        result = subprocess.run(["python3", "src/actions/stop_server.py"], capture_output=True, text=True)
+        if result.returncode == 0:
+            output = json.loads(result.stdout)
+            return output.get("success", False), output.get("message", "")
+        else:
+            log_error(f"stop_server.py failed: {result.stderr}")
+            return False, result.stderr
     except Exception as e:
         log_error("stop_server exception", e)
         return False, str(e)
 
+
 def update_whitelist(data):
     try:
-        with open('whitelist.json', 'w') as f:
-            json.dump(data, f, indent=2)
-        # Restart Minecraft server to apply whitelist changes
-        stop = subprocess.run(["systemctl", "stop", "minecraft"], capture_output=True, text=True)
-        if stop.returncode != 0:
-            msg = f"Failed to stop server: {stop.stderr}"
-            log_error(msg)
-            return False, msg
-        start = subprocess.run(["systemctl", "start", "minecraft"], capture_output=True, text=True)
-        if start.returncode != 0:
-            msg = f"Failed to start server: {start.stderr}"
-            log_error(msg)
-            return False, msg
-        return True, "Whitelist updated and server restarted"
+        result = subprocess.run([
+            "python3", "src/actions/update_whitelist.py", json.dumps(data)
+        ], capture_output=True, text=True)
+        if result.returncode == 0:
+            output = json.loads(result.stdout)
+            return output.get("success", False), output.get("message", "")
+        else:
+            log_error(f"update_whitelist.py failed: {result.stderr}")
+            return False, result.stderr
     except Exception as e:
         log_error("update_whitelist exception", e)
         return False, str(e)
 
-@app.route("/")
+
+def get_whitelist_json():
+    try:
+        with open('whitelist.json') as f:
+            data = json.load(f)
+        return json.dumps(data, indent=2)
+    except Exception:
+        return "[]"
+
+def get_error_log():
+    return list(error_log)
+
+def get_status_message():
+    running = server_running
+    users = get_connected_users()
+    if running:
+        return f"Server running. Users: {users}", False
+    else:
+        return "Server stopped.", False
+
+@app.route("/", methods=["GET"])
 def index():
-    # TODO: Render main manager page
-    return render_template("index.html")
+    status_message, status_error = get_status_message()
+    return render_template(
+        "index.html",
+        status_message=status_message,
+        status_error=status_error,
+        whitelist_json=get_whitelist_json(),
+        error_log=get_error_log()
+    )
+
 
 @app.route("/start", methods=["POST"])
 def start():
     success, msg = start_server()
-    return jsonify({"success": success, "message": msg})
+    status_message = msg
+    status_error = not success
+    return render_template(
+        "index.html",
+        status_message=status_message,
+        status_error=status_error,
+        whitelist_json=get_whitelist_json(),
+        error_log=get_error_log()
+    )
+
 
 @app.route("/stop", methods=["POST"])
 def stop():
     success, msg = stop_server()
-    return jsonify({"success": success, "message": msg})
+    status_message = msg
+    status_error = not success
+    return render_template(
+        "index.html",
+        status_message=status_message,
+        status_error=status_error,
+        whitelist_json=get_whitelist_json(),
+        error_log=get_error_log()
+    )
 
-@app.route("/whitelist", methods=["GET", "POST"])
+
+@app.route("/whitelist", methods=["POST"])
 def whitelist():
-    if request.method == "POST":
-        data = request.get_json()
-        success, msg = update_whitelist(data)
-        return jsonify({"success": success, "message": msg})
-    else:
-        try:
-            with open('whitelist.json') as f:
-                data = json.load(f)
-        except Exception:
-            log_error("Unable to read whitelist.json")
-            data = []
-        return jsonify(data)
+    try:
+        data = json.loads(request.form["whitelistBox"])
+    except Exception:
+        status_message = "Invalid JSON in whitelist."
+        status_error = True
+        return render_template(
+            "index.html",
+            status_message=status_message,
+            status_error=status_error,
+            whitelist_json=request.form["whitelistBox"],
+            error_log=get_error_log()
+        )
+    success, msg = update_whitelist(data)
+    status_message = msg
+    status_error = not success
+    return render_template(
+        "index.html",
+        status_message=status_message,
+        status_error=status_error,
+        whitelist_json=json.dumps(data, indent=2),
+        error_log=get_error_log()
+    )
 
-@app.route("/errors", methods=["GET"])
-def errors():
-    return jsonify(list(error_log))
 
 @app.route("/errors/clear", methods=["POST"])
 def clear_errors():
     error_log.clear()
-    return jsonify({"success": True, "message": "Error log cleared"})
+    status_message = "Error log cleared"
+    status_error = False
+    return render_template(
+        "index.html",
+        status_message=status_message,
+        status_error=status_error,
+        whitelist_json=get_whitelist_json(),
+        error_log=get_error_log()
+    )
 
 @app.errorhandler(Exception)
 def handle_unexpected_error(e):
