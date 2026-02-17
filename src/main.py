@@ -92,8 +92,14 @@ def get_whitelist_json():
         with open('/opt/minecraft/whitelist.json') as f:
             data = json.load(f)
         return json.dumps(data, indent=2)
-    except Exception:
-        return "[]"
+    except Exception as e:
+        log_error(f"Failed to load whitelist.json: {e}")
+        try:
+            with open('/opt/minecraft/whitelist.json') as f:
+                raw = f.read()
+            return raw
+        except Exception:
+            return "[]"
 
 def get_error_log():
     return list(error_log)
