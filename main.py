@@ -129,69 +129,26 @@ def index():
 @app.route("/start", methods=["POST"])
 def start():
     success, msg = start_server()
-    status_message = msg
-    status_error = not success
-    return render_template(
-        "index.html",
-        status_message=status_message,
-        status_error=status_error,
-        whitelist_json=get_whitelist_json(),
-        error_log=get_error_log()
-    )
-
+    return redirect(url_for("index"))
 
 @app.route("/stop", methods=["POST"])
 def stop():
     success, msg = stop_server()
-    status_message = msg
-    status_error = not success
-    return render_template(
-        "index.html",
-        status_message=status_message,
-        status_error=status_error,
-        whitelist_json=get_whitelist_json(),
-        error_log=get_error_log()
-    )
-
+    return redirect(url_for("index"))
 
 @app.route("/whitelist", methods=["POST"])
 def whitelist():
     try:
         data = json.loads(request.form["whitelistBox"])
     except Exception:
-        status_message = "Invalid JSON in whitelist."
-        status_error = True
-        return render_template(
-            "index.html",
-            status_message=status_message,
-            status_error=status_error,
-            whitelist_json=request.form["whitelistBox"],
-            error_log=get_error_log()
-        )
+        return redirect(url_for("index"))
     success, msg = update_whitelist(data)
-    status_message = msg
-    status_error = not success
-    return render_template(
-        "index.html",
-        status_message=status_message,
-        status_error=status_error,
-        whitelist_json=json.dumps(data, indent=2),
-        error_log=get_error_log()
-    )
-
+    return redirect(url_for("index"))
 
 @app.route("/errors/clear", methods=["POST"])
 def clear_errors():
     error_log.clear()
-    status_message = "Error log cleared"
-    status_error = False
-    return render_template(
-        "index.html",
-        status_message=status_message,
-        status_error=status_error,
-        whitelist_json=get_whitelist_json(),
-        error_log=get_error_log()
-    )
+    return redirect(url_for("index"))
 
 @app.errorhandler(Exception)
 def handle_unexpected_error(e):
