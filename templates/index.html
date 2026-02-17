@@ -22,7 +22,10 @@
         <button type="submit">Submit Whitelist</button>
     </form>
     <h2>Error Log (last 100)</h2>
-    <textarea rows="10" cols="60" readonly>{% for err in error_log %}{{ err }}\n{% endfor %}</textarea><br>
+    <pre style="width:600px;height:180px;overflow:auto;border:1px solid #ccc;background:#f9f9f9;">
+{% for err in error_log %}{{ err }}
+{% endfor %}
+    </pre><br>
     <form method="post" action="/errors/clear">
         <button type="submit">Clear Errors</button>
     </form>
