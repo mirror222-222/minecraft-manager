@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_from_directory
 
 import threading
 import time
@@ -191,6 +191,10 @@ def clear_errors():
 def handle_unexpected_error(e):
     log_error("Unhandled application error", e)
     return jsonify({"success": False, "message": "Internal server error"}), 500
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(app.static_folder, 'favicon.ico')
 
 @app.route("/status")
 def status():
