@@ -1,11 +1,11 @@
 import subprocess
 import os
-from datetime import datetime
+import datetime
 import time
 import json
 
 def log_error(message, exc=None):
-    timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     entry = f"[{timestamp}] {message}"
     if exc is not None:
         entry += f" | {type(exc).__name__}: {exc}"
@@ -20,7 +20,24 @@ def start_server():
             return False, msg
         server_jar = "server.jar"
         if not os.path.exists(server_jar):
-            url = "https://launcher.mojang.com/v1/objects/placeholder/server.jar"
+            # Fetch the latest Minecraft server JAR URL
+            import urllib.request
+            try:
+                version_manifest_url = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
+                with urllib.request.urlopen(version_manifest_url) as response:
+                    manifest = response.read().decode()
+                manifest_json = json.loads(manifest)
+                latest_release = manifest_json["latest"]["release"]
+                version_info = next(v for v in manifest_json["versions"] if v["id"] == latest_release)
+                version_url = version_info["url"]
+                with urllib.request.urlopen(version_url) as response:
+                    version_data = response.read().decode()
+                version_json = json.loads(version_data)
+                url = version_json["downloads"]["server"]["url"]
+            except Exception as e:
+                msg = f"Failed to fetch latest server JAR URL: {e}"
+                log_error(msg)
+                return False, msg
             dl = subprocess.run(["wget", "-O", server_jar, url], capture_output=True, text=True)
             if dl.returncode != 0:
                 msg = f"Download failed: {dl.stderr}"
