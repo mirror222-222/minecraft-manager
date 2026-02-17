@@ -13,7 +13,8 @@ def log_error(message, exc=None):
 
 def start_server():
     try:
-        server_jar = "server.jar"
+        server_dir = "/opt/minecraft"
+        server_jar = os.path.join(server_dir, "server.jar")
         if not os.path.exists(server_jar):
             # Fetch the latest Minecraft server JAR URL
             import urllib.request
@@ -38,9 +39,9 @@ def start_server():
                 msg = f"Download failed: {dl.stderr}"
                 log_error(msg)
                 return False, msg
-        with open("eula.txt", "w") as f:
+        with open(os.path.join(server_dir, "eula.txt"), "w") as f:
             f.write("eula=true\n")
-        props = "server.properties"
+        props = os.path.join(server_dir, "server.properties")
         if os.path.exists(props):
             with open(props) as f:
                 lines = f.readlines()

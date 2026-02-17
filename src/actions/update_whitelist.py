@@ -1,5 +1,7 @@
+
 import subprocess
 import json
+import os
 from datetime import datetime
 import sys
 
@@ -12,7 +14,9 @@ def log_error(message, exc=None):
 
 def update_whitelist(data):
     try:
-        with open('whitelist.json', 'w') as f:
+        server_dir = "/opt/minecraft"
+        whitelist_path = os.path.join(server_dir, 'whitelist.json')
+        with open(whitelist_path, 'w') as f:
             json.dump(data, f, indent=2)
         stop = subprocess.run(["systemctl", "stop", "minecraft"], capture_output=True, text=True)
         if stop.returncode != 0:

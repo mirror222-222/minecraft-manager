@@ -4,32 +4,43 @@
 
 # Install prerequisites: curl, python3, default-jre-headless
 echo "Installing prerequisites: curl, python3, default-jre-headless..."
-apt update && apt install -y curl python3 default-jre
+apt update && apt install -y curl python3 default-jre-headless git
+
 
 REPO_URL="https://github.com/mirror222-222/minecraft-manager.git"
+APP_DIR="/opt/minecraftmanager"
+SERVER_DIR="/opt/minecraft"
 
-TARGET_DIR="/opt/minecraft"
-TARGET_DIR="/opt/minecraft"
 
 
-if [ -d "$TARGET_DIR/.git" ]; then
-    echo "Updating existing repository in $TARGET_DIR..."
-    cd "$TARGET_DIR" || exit 1
-    git pull origin main
-else
-    echo "Cloning repository into $TARGET_DIR..."
-    git clone "$REPO_URL" "$TARGET_DIR"
-    cd "$TARGET_DIR" || exit 1
+# Install or update the app code in /opt/minecraftmanager
+if [ ! -d "$APP_DIR" ]; then
+    echo "Creating $APP_DIR..."
+    mkdir -p "$APP_DIR"
 fi
 
-echo "Installing Python dependencies..."
+if [ -d "$APP_DIR/.git" ]; then
+    echo "Updating existing repository in $APP_DIR..."
+    cd "$APP_DIR" || { echo "Failed to cd to $APP_DIR"; exit 1; }
+    git pull origin main || { echo "git pull failed"; exit 1; }
+else
+    if [ -d "$APP_DIR" ] && [ ! -d "$APP_DIR/.git" ]; then
+        echo "$APP_DIR exists but is not a git repo. Removing..."
+        rm -rf "$APP_DIR"
+        mkdir -p "$APP_DIR"
+    fi
+    echo "Cloning repository into $APP_DIR..."
+    git clone "$REPO_URL" "$APP_DIR" || { echo "git clone failed"; exit 1; }
+    cd "$APP_DIR" || { echo "Failed to cd to $APP_DIR after clone"; exit 1; }
+fi
 
+
+echo "Installing Python dependencies..."
 if [ -f requirements.txt ]; then
     pip3 install -r requirements.txt
 fi
 
 echo "Running application..."
-
 if [ -f src/main.py ]; then
     python3 src/main.py
 else
@@ -37,8 +48,9 @@ else
 fi
 
 echo "Update/Install complete."
+
 # --- Minecraft server auto-update logic ---
-cd "$TARGET_DIR" || exit 1
+cd "$SERVER_DIR" || exit 1
 
 # Download version manifest
 VERSION_MANIFEST_URL="https://launchermeta.mojang.com/mc/game/version_manifest.json"

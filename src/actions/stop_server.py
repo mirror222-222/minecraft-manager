@@ -11,6 +11,7 @@ def log_error(message, exc=None):
 
 def stop_server():
     try:
+        # If you need to reference files, use /opt/minecraft as the server directory
         stop = subprocess.run(["systemctl", "stop", "minecraft"], capture_output=True, text=True)
         if stop.returncode != 0:
             msg = f"Failed to stop server: {stop.stderr}"
