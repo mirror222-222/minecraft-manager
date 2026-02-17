@@ -101,20 +101,26 @@ def get_error_log():
     return list(error_log)
 
 def get_status_message():
-    running = server_running
+    # Check actual Minecraft server status using systemctl
+    try:
+        status = subprocess.run(["systemctl", "is-active", "minecraft"], capture_output=True, text=True)
+        running = status.stdout.strip() == "active"
+    except Exception:
+        running = False
     users = get_connected_users()
     if running:
-        return f"Server running. Users: {users}", False
+        return f"Server running. Users: {users}", False, True
     else:
-        return "Server stopped.", False
+        return "Server stopped.", False, False
 
 @app.route("/", methods=["GET"])
 def index():
-    status_message, status_error = get_status_message()
+    status_message, status_error, server_running = get_status_message()
     return render_template(
         "index.html",
         status_message=status_message,
         status_error=status_error,
+        server_running=server_running,
         whitelist_json=get_whitelist_json(),
         error_log=get_error_log()
     )

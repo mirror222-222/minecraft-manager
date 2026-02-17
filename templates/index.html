@@ -10,7 +10,7 @@
     {% if status_message %}
     <div id="status" style="color: {{ 'red' if status_error else 'green' }};">{{ status_message }}</div>
     {% endif %}
-    {% if status_message and 'Server running' in status_message %}
+    {% if server_running %}
         <form method="post" action="/stop">
             <button type="submit" style="background-color:#d32f2f;color:white;">Stop Minecraft</button>
         </form>
