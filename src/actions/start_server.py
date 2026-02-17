@@ -61,12 +61,15 @@ def start_server():
         else:
             with open(props, "w") as f:
                 f.write("enforce-whitelist=true\n")
-        start = subprocess.run(["systemctl", "start", "minecraft"], capture_output=True, text=True)
-        if start.returncode != 0:
-            msg = f"Failed to start server: {start.stderr}"
+        # Start the Minecraft server in the foreground
+        print("Starting Minecraft server at the console...")
+        try:
+            subprocess.run(["java", "-Xmx1024M", "-Xms1024M", "-jar", "server.jar", "nogui"])
+            return True, "Server started (console mode)"
+        except Exception as e:
+            msg = f"Failed to start server: {e}"
             log_error(msg)
             return False, msg
-        return True, "Server started"
     except Exception as e:
         log_error("start_server exception", e)
         return False, str(e)
