@@ -1,6 +1,11 @@
 #!/bin/bash
 # update_install.sh - Simple script to update or install this project from its git repository
 
+
+# Install prerequisites: curl, python3, default-jre-headless
+echo "Installing prerequisites: curl, python3, default-jre-headless..."
+apt update && apt install -y curl python3 default-jre
+
 REPO_URL="https://github.com/mirror222-222/minecraft-manager.git"
 
 TARGET_DIR="/opt/minecraft"
