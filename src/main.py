@@ -167,7 +167,7 @@ def whitelist():
         "index.html",
         status_message=status_message,
         status_error=status_error,
-        whitelist_json=json.dumps(data, indent=2),
+        whitelist_json=get_whitelist_json(),
         error_log=get_error_log()
     )
 
