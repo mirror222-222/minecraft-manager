@@ -8,7 +8,7 @@ import subprocess
 from collections import deque
 from datetime import datetime
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="/templates", static_folder="/static")
 
 # Globals for idle shutdown
 last_user_activity = time.time()
@@ -43,7 +43,7 @@ def get_connected_users():
 
 def start_server():
     try:
-        result = subprocess.run(["python3", "src/actions/start_server.py"], capture_output=True, text=True)
+        result = subprocess.run(["python3", "actions/start_server.py"], capture_output=True, text=True)
         if result.returncode == 0:
             output = json.loads(result.stdout)
             return output.get("success", False), output.get("message", "")
@@ -57,7 +57,7 @@ def start_server():
 
 def stop_server():
     try:
-        result = subprocess.run(["python3", "src/actions/stop_server.py"], capture_output=True, text=True)
+        result = subprocess.run(["python3", "actions/stop_server.py"], capture_output=True, text=True)
         if result.returncode == 0:
             output = json.loads(result.stdout)
             return output.get("success", False), output.get("message", "")
@@ -72,7 +72,7 @@ def stop_server():
 def update_whitelist(data):
     try:
         result = subprocess.run([
-            "python3", "src/actions/update_whitelist.py", json.dumps(data)
+            "python3", "actions/update_whitelist.py", json.dumps(data)
         ], capture_output=True, text=True)
         if result.returncode == 0:
             output = json.loads(result.stdout)
