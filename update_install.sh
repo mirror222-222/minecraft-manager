@@ -7,9 +7,12 @@ echo "Installing prerequisites: curl, python3, default-jre-headless..."
 apt update && apt install -y curl python3 default-jre-headless git
 
 
+
 REPO_URL="https://github.com/mirror222-222/minecraft-manager.git"
 APP_DIR="/opt/minecraftmanager"
 SERVER_DIR="/opt/minecraft"
+
+# After cloning, move all project files (main.py, update_install.sh, README.md, etc.) to /opt/minecraftmanager root
 
 
 
@@ -18,6 +21,7 @@ if [ ! -d "$APP_DIR" ]; then
     echo "Creating $APP_DIR..."
     mkdir -p "$APP_DIR"
 fi
+
 
 if [ -d "$APP_DIR/.git" ]; then
     echo "Updating existing repository in $APP_DIR..."
@@ -35,16 +39,20 @@ else
 fi
 
 
+# No need to move files; repo is now structured with main.py and hello.sh at the root.
+
+
 echo "Installing Python dependencies..."
 if [ -f requirements.txt ]; then
     pip3 install -r requirements.txt
 fi
 
+
 echo "Running application..."
-if [ -f src/main.py ]; then
-    python3 src/main.py
+if [ -f main.py ]; then
+    python3 main.py
 else
-    echo "src/main.py not found."
+    echo "main.py not found."
 fi
 
 echo "Update/Install complete."
