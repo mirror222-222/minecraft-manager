@@ -62,7 +62,9 @@ def start_server():
         # Start the Minecraft server in the foreground
         print("Starting Minecraft server at the console...")
         try:
-            subprocess.run(["java", "-Xmx1024M", "-Xms1024M", "-jar", "server.jar", "nogui"])
+            subprocess.run([
+                "java", "-Xmx1024M", "-Xms1024M", "-jar", "server.jar", "nogui"
+            ], cwd=server_dir)
             return True, "Server started (console mode)"
         except Exception as e:
             msg = f"Failed to start server: {e}"
