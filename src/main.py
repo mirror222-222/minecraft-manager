@@ -173,15 +173,22 @@ def whitelist():
             whitelist_json=request.form["whitelistBox"],
             error_log=get_error_log()
         )
+    print("DEBUG: Calling update_whitelist with:", data)
     success, msg = update_whitelist(data)
+    print(f"DEBUG: update_whitelist returned success={success}, msg={msg}")
     status_message = msg
     status_error = not success
+    # After saving, reload from disk to display the actual saved values
+    import time
+    time.sleep(0.1)  # Small delay to ensure file write completes
     whitelist_contents = get_whitelist_json()
+    print("DEBUG: get_whitelist_json returned:", whitelist_contents)
     # If whitelist_contents is not valid JSON, show an error
     try:
         json.loads(whitelist_contents)
     except Exception as e:
         log_error(f"Whitelist file invalid after save: {e}")
+        print(f"DEBUG: Whitelist file invalid after save: {e}")
         status_message += f" | Whitelist file invalid: {e}"
         status_error = True
     return render_template(
