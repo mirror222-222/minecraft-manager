@@ -91,14 +91,18 @@ def get_whitelist_json():
     try:
         with open('/opt/minecraft/whitelist.json') as f:
             data = json.load(f)
+        print("DEBUG: Loaded whitelist.json:", data)
         return json.dumps(data, indent=2)
     except Exception as e:
         log_error(f"Failed to load whitelist.json: {e}")
+        print(f"DEBUG: Failed to load whitelist.json: {e}")
         try:
             with open('/opt/minecraft/whitelist.json') as f:
                 raw = f.read()
+            print("DEBUG: Raw whitelist.json:", raw)
             return raw
-        except Exception:
+        except Exception as e2:
+            print(f"DEBUG: Could not read whitelist.json: {e2}")
             return "[]"
 
 def get_error_log():
@@ -169,11 +173,19 @@ def whitelist():
     success, msg = update_whitelist(data)
     status_message = msg
     status_error = not success
+    whitelist_contents = get_whitelist_json()
+    # If whitelist_contents is not valid JSON, show an error
+    try:
+        json.loads(whitelist_contents)
+    except Exception as e:
+        log_error(f"Whitelist file invalid after save: {e}")
+        status_message += f" | Whitelist file invalid: {e}"
+        status_error = True
     return render_template(
         "index.html",
         status_message=status_message,
         status_error=status_error,
-        whitelist_json=get_whitelist_json(),
+        whitelist_json=whitelist_contents,
         error_log=get_error_log()
     )
 
