@@ -15,17 +15,19 @@ def start_server():
     try:
         server_dir = "/opt/minecraft"
         if not os.path.exists(server_dir):
+            print(f"[INFO] Creating server directory at {server_dir}")
             os.makedirs(server_dir, exist_ok=True)
         server_jar = os.path.join(server_dir, "server.jar")
         version_file = os.path.join(server_dir, "server.jar.version")
         import urllib.request
-        # Fetch latest version info
+        print("[INFO] Checking for latest Minecraft server version...")
         try:
             version_manifest_url = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
             with urllib.request.urlopen(version_manifest_url) as response:
                 manifest = response.read().decode()
             manifest_json = json.loads(manifest)
             latest_release = manifest_json["latest"]["release"]
+            print(f"[INFO] Latest Minecraft release: {latest_release}")
             version_info = next(v for v in manifest_json["versions"] if v["id"] == latest_release)
             version_url = version_info["url"]
             with urllib.request.urlopen(version_url) as response:
@@ -43,11 +45,16 @@ def start_server():
             with open(version_file) as vf:
                 current_version = vf.read().strip()
             if current_version != latest_release:
+                print(f"[INFO] Server out of date (current: {current_version}, latest: {latest_release}). Will update.")
                 need_download = True
+            else:
+                print(f"[INFO] Server is up to date (version: {current_version}).")
         else:
+            print("[INFO] No server.jar found. Will download latest.")
             need_download = True
 
         if need_download:
+            print(f"[INFO] Downloading Minecraft server {latest_release}...")
             dl = subprocess.run(["wget", "-O", server_jar, url], capture_output=True, text=True)
             if dl.returncode != 0:
                 msg = f"Download failed: {dl.stderr}"
@@ -55,10 +62,13 @@ def start_server():
                 return False, msg
             with open(version_file, "w") as vf:
                 vf.write(latest_release)
+            print(f"[INFO] Downloaded and updated to version {latest_release}.")
+        print("[INFO] Accepting EULA...")
         with open(os.path.join(server_dir, "eula.txt"), "w") as f:
             f.write("eula=true\n")
         props = os.path.join(server_dir, "server.properties")
         if os.path.exists(props):
+            print("[INFO] Updating server.properties to enforce whitelist...")
             with open(props) as f:
                 lines = f.readlines()
             found = False
@@ -71,10 +81,11 @@ def start_server():
             with open(props, "w") as f:
                 f.writelines(lines)
         else:
+            print("[INFO] Creating server.properties with enforce-whitelist...")
             with open(props, "w") as f:
                 f.write("enforce-whitelist=true\n")
         # Start the Minecraft server in the foreground
-        print("Starting Minecraft server at the console...")
+        print("[INFO] Starting Minecraft server at the console...")
         try:
             subprocess.run([
                 "java", "-Xmx1024M", "-Xms1024M", "-jar", "server.jar", "nogui"
