@@ -16,8 +16,26 @@ def update_whitelist(data):
     try:
         server_dir = "/opt/minecraft"
         whitelist_path = os.path.join(server_dir, 'whitelist.json')
+        # Load current whitelist
+        if os.path.exists(whitelist_path):
+            with open(whitelist_path, 'r') as f:
+                current_whitelist = json.load(f)
+        else:
+            current_whitelist = []
+        # Merge new entries with existing whitelist
+        # Assume whitelist is a list of dicts with 'uuid' or 'name' as unique key
+        def get_key(entry):
+            return entry.get('uuid') or entry.get('name')
+        existing_keys = {get_key(entry) for entry in current_whitelist}
+        merged_whitelist = current_whitelist.copy()
+        for entry in data:
+            key = get_key(entry)
+            if key not in existing_keys:
+                merged_whitelist.append(entry)
+                existing_keys.add(key)
+        # Save merged whitelist
         with open(whitelist_path, 'w') as f:
-            json.dump(data, f, indent=2)
+            json.dump(merged_whitelist, f, indent=2)
         stop = subprocess.run(["systemctl", "stop", "minecraft"], capture_output=True, text=True)
         if stop.returncode != 0:
             msg = f"Failed to stop server: {stop.stderr}"
