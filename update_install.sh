@@ -56,37 +56,25 @@ else
     echo "main.py not found."
 fi
 
-echo "Update/Install complete."
 
-# --- Minecraft server auto-update logic ---
-cd "$SERVER_DIR" || exit 1
-
-# Download version manifest
-VERSION_MANIFEST_URL="https://launchermeta.mojang.com/mc/game/version_manifest.json"
-VERSION_MANIFEST_JSON="$(curl -fsSL "$VERSION_MANIFEST_URL")"
-LATEST_VERSION=$(echo "$VERSION_MANIFEST_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin)['latest']['release'])")
-
-# Get current installed version (if any)
-if [ -f server.jar.version ]; then
-    CURRENT_VERSION=$(cat server.jar.version)
-else
-    CURRENT_VERSION="none"
+echo "Setting up Minecraft server as a systemd service..."
+# Create minecraft user if not exists
+if ! id minecraft &>/dev/null; then
+    useradd -r -m -d "$SERVER_DIR" minecraft
 fi
 
-if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ]; then
-    echo "Updating Minecraft server to version $LATEST_VERSION..."
-    # Get version metadata URL
-    VERSION_URL=$(echo "$VERSION_MANIFEST_JSON" | python3 -c "import sys, json; v=json.load(sys.stdin); print([x['url'] for x in v['versions'] if x['id']=='$LATEST_VERSION'][0])")
-    VERSION_JSON="$(curl -fsSL "$VERSION_URL")"
+# Copy systemd unit file
+cp "$APP_DIR/minecraft.service" /etc/systemd/system/minecraft.service
+chown root:root /etc/systemd/system/minecraft.service
+chmod 644 /etc/systemd/system/minecraft.service
+
+# Ensure server files owned by minecraft user
+chown -R minecraft:minecraft "$SERVER_DIR"
+
+# Enable the service (do not start)
+systemctl daemon-reload
+systemctl enable minecraft
+
+echo "Minecraft server systemd service setup complete."
     SERVER_JAR_URL=$(echo "$VERSION_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin)['downloads']['server']['url'])")
-    curl -fsSL -o server.jar "$SERVER_JAR_URL"
-    if [ $? -eq 0 ]; then
-        echo "$LATEST_VERSION" > server.jar.version
-        echo "Minecraft server updated to $LATEST_VERSION."
-    else
-        echo "Failed to download server.jar."
-    fi
-else
-    echo "Minecraft server is already up to date ($CURRENT_VERSION)."
-fi
 

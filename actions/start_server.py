@@ -84,13 +84,15 @@ def start_server():
             print("[INFO] Creating server.properties with enforce-whitelist...")
             with open(props, "w") as f:
                 f.write("enforce-whitelist=true\n")
-        # Start the Minecraft server in the foreground
-        print("[INFO] Starting Minecraft server at the console...")
+        # Start the Minecraft server as a systemd service
+        print("[INFO] Starting Minecraft server via systemd service...")
         try:
-            subprocess.run([
-                "java", "-Xmx1024M", "-Xms1024M", "-jar", "server.jar", "nogui"
-            ], cwd=server_dir)
-            return True, "Server started (console mode)"
+            start = subprocess.run(["systemctl", "start", "minecraft"], capture_output=True, text=True)
+            if start.returncode != 0:
+                msg = f"Failed to start server: {start.stderr}"
+                log_error(msg)
+                return False, msg
+            return True, "Server started (systemd service)"
         except Exception as e:
             msg = f"Failed to start server: {e}"
             log_error(msg)
