@@ -13,9 +13,16 @@ def log_error(message, exc=None):
 
 def start_server():
     try:
-        apt = subprocess.run(["apt", "update"], capture_output=True, text=True)
-        if apt.returncode != 0:
-            msg = f"apt update failed: {apt.stderr}"
+        # Install prerequisites: curl, python3, default-jre-headless
+        print("Installing prerequisites: curl, python3, default-jre...")
+        apt_update = subprocess.run(["apt", "update"], capture_output=True, text=True)
+        if apt_update.returncode != 0:
+            msg = f"apt update failed: {apt_update.stderr}"
+            log_error(msg)
+            return False, msg
+        apt_install = subprocess.run(["apt", "install", "-y", "curl", "python3", "default-jre-headless"], capture_output=True, text=True)
+        if apt_install.returncode != 0:
+            msg = f"apt install failed: {apt_install.stderr}"
             log_error(msg)
             return False, msg
         server_jar = "server.jar"
