@@ -1,0 +1,16 @@
+{
+    "name": "Minecraft Manager DevContainer",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash"
+    },
+    "postCreateCommand": "pip install --upgrade pip",
+    "features": {},
+    "extensions": [
+        "ms-python.python",
+        "ms-azuretools.vscode-docker"
+    ],
+    "remoteUser": "vscode"
+}
