@@ -8,7 +8,7 @@ import subprocess
 from collections import deque
 from datetime import datetime
 
-app = Flask(__name__, template_folder="/templates", static_folder="/static")
+app = Flask(__name__, template_folder="templates", static_folder="static")
 
 # Globals for idle shutdown
 last_user_activity = time.time()
