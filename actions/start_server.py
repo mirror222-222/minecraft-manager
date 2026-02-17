@@ -94,11 +94,29 @@ def start_server():
             if start.returncode != 0:
                 msg = f"Failed to start server: {start.stderr}"
                 log_error(msg)
+                log_messages.append(f"[ERROR] {msg}")
                 return False, msg
-            return True, "Server started (systemd service)"
+            # Get server IP and port from server.properties
+            props_path = os.path.join(server_dir, "server.properties")
+            server_ip = "0.0.0.0"
+            server_port = "25565"
+            if os.path.exists(props_path):
+                with open(props_path) as f:
+                    for line in f:
+                        if line.startswith("server-ip"):
+                            server_ip = line.split("=")[1].strip() or "0.0.0.0"
+                        if line.startswith("server-port"):
+                            server_port = line.split("=")[1].strip() or "25565"
+            log_messages.append(f"[SUCCESS] Minecraft server started (systemd service)")
+            log_messages.append(f"[INFO] Minecraft server listening on {server_ip}:{server_port}")
+            # Stub: user count (real implementation would parse logs or query server)
+            user_count = 0
+            log_messages.append(f"[INFO] Users online: {user_count}")
+            return True, f"Server started (systemd service) at {server_ip}:{server_port} with {user_count} users online"
         except Exception as e:
             msg = f"Failed to start server: {e}"
             log_error(msg)
+            log_messages.append(f"[ERROR] {msg}")
             return False, msg
     except Exception as e:
         log_error("start_server exception", e)

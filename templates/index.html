@@ -10,12 +10,15 @@
     {% if status_message %}
     <div id="status" style="color: {{ 'red' if status_error else 'green' }};">{{ status_message }}</div>
     {% endif %}
-    <form method="post" action="/start">
-        <button type="submit">Start Minecraft</button>
-    </form>
-    <form method="post" action="/stop">
-        <button type="submit">Stop Minecraft</button>
-    </form>
+    {% if status_message and 'Server running' in status_message %}
+        <form method="post" action="/stop">
+            <button type="submit" style="background-color:#d32f2f;color:white;">Stop Minecraft</button>
+        </form>
+    {% else %}
+        <form method="post" action="/start">
+            <button type="submit" style="background-color:#388e3c;color:white;">Start Minecraft</button>
+        </form>
+    {% endif %}
     <h2>Edit Whitelist</h2>
     <form method="post" action="/whitelist">
         <textarea name="whitelistBox" rows="10" cols="60">{{ whitelist_json }}</textarea><br>
