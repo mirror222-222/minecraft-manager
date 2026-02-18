@@ -1,80 +1,100 @@
-
 # Minecraft Manager
 
-**TL;DR: Install/Run on target system**
+Web-based manager for a Minecraft Java server with systemd integration.
 
-Run this one-liner from your bash prompt (no need to download anything manually):
+## Quick Install (Target Host)
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/mirror222-222/minecraft-manager/main/update_install.sh | sudo bash
 ```
 
-This will install the Minecraft Manager into `/opt/minecraftmanager` and set up the Minecraft server in `/opt/minecraft`.
+This installs:
+- App code in `/opt/minecraftmanager`
+- Minecraft server files in `/opt/minecraft`
+- Python virtual environment in `/opt/minecraftmanager/.venv`
 
-A development environment for managing Minecraft servers and scripts, using Python and Bash.
+## What It Does
 
-## Features
-- Python scripting
-- Bash utilities
-- Dev container support for consistent development
+- Start/stop Minecraft server from a web UI
+- Edit and apply `whitelist.json` from the web UI
+- Auto-stop server after 30 minutes with 0 connected players
+- Show inactivity shutdown notice in the web UI
 
-## Getting Started
-1. Open this folder in VS Code.
-2. Reopen in Container when prompted (or use the Command Palette: "Dev Containers: Reopen in Container").
-3. Start developing with Python and Bash!
+## Services
 
-## Requirements
-- [VS Code](https://code.visualstudio.com/)
-- [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+The installer configures these systemd services:
 
+- `minecraft.service` (Minecraft Java server)
+	- Enabled at boot
+	- Not auto-started during install
+- `minecraft-manager.service` (Flask web UI)
+	- Enabled and started immediately during install (`enable --now`)
+- `minecraft-idle-monitor.service` (inactivity monitor)
+	- Enabled and started immediately during install (`enable --now`)
 
-## Structure
-- `.devcontainer/` - Dev container configuration
-- `main.py` - Web manager entry point (project root)
-- `hello.sh` - Example script (project root)
-- `src/actions/` - Python scripts for server actions
-- `src/static/` - Static files (CSS, JS)
-- `src/templates/` - HTML templates
-- `update_install.sh` - Installer/Updater script
-- `README.md`, `LICENSE`, etc. (project root)
-
----
-
-
----
-
-## Usage (Development)
-1. Open this folder in VS Code.
-2. Reopen in Container when prompted (or use the Command Palette: "Dev Containers: Reopen in Container").
-3. Start developing with Python and Bash!
-
-## Usage (Production/Target Install)
-Run the TL;DR command above. All manager code will be in `/opt/minecraftmanager` and the Minecraft server in `/opt/minecraft`.
-
-## Web UI Service
-The Flask web UI runs as a systemd service and can be configured to start automatically on boot.
-
-Service file:
-- `minecraft-manager.service`
-
-On an existing install, you can enable/start it with:
+## Service Commands
 
 ```sh
-sudo cp /opt/minecraftmanager/minecraft-manager.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now minecraft-manager
+sudo systemctl status minecraft
+sudo systemctl status minecraft-manager
+sudo systemctl status minecraft-idle-monitor
+
+sudo systemctl restart minecraft-manager
+sudo systemctl restart minecraft-idle-monitor
 ```
 
-## Idle Shutdown Monitor Service
-The project includes a systemd service that checks the Minecraft server every minute and stops it after 30 consecutive minutes with zero players online.
+## Troubleshooting
 
-Service file:
-- `minecraft-idle-monitor.service`
-
-On an existing install, you can enable/start it with:
+Check service health:
 
 ```sh
-sudo cp /opt/minecraftmanager/minecraft-idle-monitor.service /etc/systemd/system/
+sudo systemctl status minecraft
+sudo systemctl status minecraft-manager
+sudo systemctl status minecraft-idle-monitor
+```
+
+View recent logs (newest first):
+
+```sh
+sudo journalctl -u minecraft -n 100 --no-pager -r
+sudo journalctl -u minecraft-manager -n 100 --no-pager -r
+sudo journalctl -u minecraft-idle-monitor -n 100 --no-pager -r
+```
+
+Follow logs live:
+
+```sh
+sudo journalctl -u minecraft -f
+sudo journalctl -u minecraft-manager -f
+sudo journalctl -u minecraft-idle-monitor -f
+```
+
+If a service does not start:
+
+```sh
 sudo systemctl daemon-reload
-sudo systemctl enable --now minecraft-idle-monitor
+sudo systemctl restart minecraft-manager
+sudo systemctl restart minecraft-idle-monitor
+```
+
+## Project Layout
+
+- `main.py` - Flask web app
+- `actions/` - Action scripts (`start_server.py`, `stop_server.py`, `update_whitelist.py`, `idle_monitor.py`)
+- `templates/` - Jinja templates
+- `static/` - Static assets
+- `minecraft.service` - Minecraft systemd unit
+- `minecraft-manager.service` - Web UI systemd unit
+- `minecraft-idle-monitor.service` - Idle monitor systemd unit
+- `update_install.sh` - Install/update script
+
+## Development
+
+Run locally from repository root:
+
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python main.py
 ```
