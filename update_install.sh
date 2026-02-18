@@ -2,16 +2,17 @@
 # update_install.sh - Simple script to update or install this project from its git repository
 
 
-# Install prerequisites: curl, python3, default-jre-headless
-echo "Installing prerequisites: curl, python3, default-jre-headless..."
+# Install prerequisites: curl, python3, python3-venv, default-jre-headless
+echo "Installing prerequisites: curl, python3, python3-venv, default-jre-headless..."
 apt update && apt upgrade -y
-apt install -y curl python3 default-jre-headless git python3-pip python3-flask python3-mcstatus
+apt install -y curl python3 python3-venv default-jre-headless git
 
 
 
 REPO_URL="https://github.com/mirror222-222/minecraft-manager.git"
 APP_DIR="/opt/minecraftmanager"
 SERVER_DIR="/opt/minecraft"
+VENV_DIR="$APP_DIR/.venv"
 
 # After cloning, move all project files (main.py, update_install.sh, README.md, etc.) to /opt/minecraftmanager root
 
@@ -44,14 +45,21 @@ fi
 
 
 echo "Installing Python dependencies..."
+if [ ! -d "$VENV_DIR" ]; then
+    echo "Creating virtual environment at $VENV_DIR..."
+    python3 -m venv "$VENV_DIR" || { echo "Failed to create virtual environment"; exit 1; }
+fi
+
+"$VENV_DIR/bin/python" -m pip install --upgrade pip || { echo "Failed to upgrade pip in venv"; exit 1; }
+
 if [ -f requirements.txt ]; then
-    pip3 install -r requirements.txt
+    "$VENV_DIR/bin/pip" install -r requirements.txt || { echo "Failed to install requirements in venv"; exit 1; }
 fi
 
 
 echo "Running application..."
 if [ -f main.py ]; then
-    python3 main.py
+    "$VENV_DIR/bin/python" main.py
 else
     echo "main.py not found."
 fi

@@ -1,7 +1,7 @@
 
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_from_directory
 
-import threading, time, os, json, subprocess
+import threading, time, os, json, subprocess, sys
 from collections import deque
 from datetime import datetime, UTC
 from mcstatus import JavaServer
@@ -28,7 +28,7 @@ def get_connected_users():
 
 def start_server():
     try:
-        result = subprocess.run(["python3", os.path.abspath("actions/start_server.py")], capture_output=True, text=True)
+        result = subprocess.run([sys.executable, os.path.abspath("actions/start_server.py")], capture_output=True, text=True)
         if result.returncode == 0:
             output = json.loads(result.stdout)
             logs = output.get("log", [])
@@ -44,7 +44,7 @@ def start_server():
 
 def stop_server():
     try:
-        result = subprocess.run(["python3", os.path.abspath("actions/stop_server.py")], capture_output=True, text=True)
+        result = subprocess.run([sys.executable, os.path.abspath("actions/stop_server.py")], capture_output=True, text=True)
         if result.returncode == 0:
             output = json.loads(result.stdout)
             return output.get("success", False), output.get("message", "")
@@ -58,7 +58,7 @@ def stop_server():
 def update_whitelist(data):
     try:
         result = subprocess.run([
-            "python3", os.path.abspath("actions/update_whitelist.py"), json.dumps(data)
+            sys.executable, os.path.abspath("actions/update_whitelist.py"), json.dumps(data)
         ], capture_output=True, text=True)
         if result.returncode == 0:
             output = json.loads(result.stdout)
