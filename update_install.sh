@@ -1,3 +1,15 @@
+# Detect total RAM and optimize Minecraft JVM memory allocation
+TOTAL_RAM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
+# Allocate 75% to Minecraft, max 12288MB (12GB)
+MC_RAM_MB=$(( TOTAL_RAM_MB * 75 / 100 ))
+[ $MC_RAM_MB -gt 12288 ] && MC_RAM_MB=12288
+
+# Update minecraft.service JVM memory settings
+if [ -f minecraft.service ]; then
+    sed -i "s/-Xmx[0-9]*M/-Xmx${MC_RAM_MB}M/" minecraft.service
+    sed -i "s/-Xms[0-9]*M/-Xms${MC_RAM_MB}M/" minecraft.service
+    echo "minecraft.service updated with -Xmx${MC_RAM_MB}M and -Xms${MC_RAM_MB}M"
+fi
 #!/bin/bash
 # update_install.sh - Simple script to update or install this project from its git repository
 
