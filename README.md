@@ -2,7 +2,11 @@
 
 Web-based manager for a Minecraft Java server with systemd integration.
 
-## Quick Install (Target Host)
+## 1) Purpose
+
+Minecraft Manager provides a web UI and automation for operating a Minecraft Java server on Linux.
+
+## 2) Quick Install (Target Host)
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/mirror222-222/minecraft-manager/main/update_install.sh | sudo bash
@@ -13,37 +17,49 @@ This installs:
 - Minecraft server files in `/opt/minecraft`
 - Python virtual environment in `/opt/minecraftmanager/.venv`
 
-## What It Does
+## 3) Runtime Layout
+
+- Application directory: `/opt/minecraftmanager`
+- Server directory: `/opt/minecraft`
+- Python environment: `/opt/minecraftmanager/.venv`
+
+## 4) Implemented Features
 
 - Start/stop Minecraft server from a web UI
 - Edit and apply `whitelist.json` from the web UI
 - Auto-stop server after 30 minutes with 0 connected players
 - Show inactivity shutdown notice in the web UI
 
-## Services
+## 5) System Services
 
 The installer configures these systemd services:
 
 - `minecraft.service` (Minecraft Java server)
-	- Enabled at boot
-	- Not auto-started during install
+  - Enabled at boot
+  - Not auto-started during install
 - `minecraft-manager.service` (Flask web UI)
-	- Enabled and started immediately during install (`enable --now`)
+  - Enabled and started immediately during install (`enable --now`)
 - `minecraft-idle-monitor.service` (inactivity monitor)
-	- Enabled and started immediately during install (`enable --now`)
+  - Enabled and started immediately during install (`enable --now`)
 
-## Service Commands
+## 6) Operations
+
+Service status:
 
 ```sh
 sudo systemctl status minecraft
 sudo systemctl status minecraft-manager
 sudo systemctl status minecraft-idle-monitor
+```
 
+Restart control services:
+
+```sh
 sudo systemctl restart minecraft-manager
 sudo systemctl restart minecraft-idle-monitor
 ```
 
-## Troubleshooting
+## 7) Troubleshooting
 
 Check service health:
 
@@ -77,7 +93,7 @@ sudo systemctl restart minecraft-manager
 sudo systemctl restart minecraft-idle-monitor
 ```
 
-## Project Layout
+## 8) Project Layout
 
 - `main.py` - Flask web app
 - `actions/` - Action scripts (`start_server.py`, `stop_server.py`, `update_whitelist.py`, `idle_monitor.py`)
@@ -88,7 +104,7 @@ sudo systemctl restart minecraft-idle-monitor
 - `minecraft-idle-monitor.service` - Idle monitor systemd unit
 - `update_install.sh` - Install/update script
 
-## Development
+## 9) Development
 
 Run locally from repository root:
 

@@ -1,62 +1,105 @@
-# Minecraft Manager Project Specification
+# Minecraft Manager Specification (Current Implementation)
 
-## Overview
-A simple web-based manager for a Minecraft Java server, providing controls to start/stop the server and edit the whitelist. The manager will be accessible via a webpage with the following features:
+## 1) Purpose
 
+Minecraft Manager provides a web UI and automation for operating a Minecraft Java server on a Linux host using systemd.
 
-## Features
+This document describes the **current implemented design** only.
 
-### Webpage UI
-- **Start Minecraft** button
-- **Stop Minecraft** button
-- **Edit Whitelist** text area (for editing `whitelist.json`)
-- **Submit** button to update the whitelist and reboot the server
-- **Status/Notice** area for displaying success or error messages
+## 2) Runtime Layout
 
-### Backend Logic
-- **Stop Button**
-  - Stops the Minecraft server service
-  - On completion, displays "Server stopped" or an error message
+- Application directory: `/opt/minecraftmanager`
+- Minecraft server directory: `/opt/minecraft`
+- Python virtual environment: `/opt/minecraftmanager/.venv`
 
-- **Start Button**
-  - Runs `apt update`
-  - Checks for the latest Minecraft Java server version
-    - If not present or outdated, downloads the latest version
-  - Ensures `eula.txt` exists and contains `eula=true`
-  - Ensures the server is in allowlist-only mode (users must be in `whitelist.json` to join)
-  - Starts the Minecraft server service
-  - On completion, displays "Server started" or an error message
+## 3) System Services
 
-- **Edit Whitelist**
-  - Allows editing of the `whitelist.json` file via the webpage
-  - On submit, updates the file and restarts the Minecraft server service
+### 3.1 minecraft.service
 
-- **Automatic Idle Shutdown**
-  - Once the Minecraft server is running, the backend will check every minute to see how many users are connected.
-  - If there are no users connected for 30 consecutive minutes, the server will be automatically stopped.
-  - A notice will be displayed in the web UI when the server is stopped due to inactivity.
+- Runs the Minecraft Java server from `/opt/minecraft`.
+- Enabled at boot by installer.
+- Not auto-started during install.
 
-## Technical Requirements
-- **Frontend:** Simple HTML/CSS/JavaScript (can use Flask/Jinja2 for templating)
-- **Backend:** Python (Flask web server)
-- **System Integration:**
-  - Use subprocess or systemd to control the Minecraft server service
-  - Use Python to read/write `whitelist.json` and manage `eula.txt`
-  - Use Python to run `apt update` and download server jar as needed
+### 3.2 minecraft-manager.service
 
-## File Structure
-- `src/`
-  - `main.py` (Flask app and backend logic)
-  - `templates/` (HTML templates)
-  - `static/` (CSS/JS)
-- `README.md` (project documentation)
-- `whitelist.json` (Minecraft server whitelist)
-- `eula.txt` (Minecraft server EULA)
+- Runs Flask web UI using `/opt/minecraftmanager/.venv/bin/python /opt/minecraftmanager/main.py`.
+- Enabled and started during install (`systemctl enable --now minecraft-manager`).
 
-## Future Enhancements (Optional)
-- Authentication for the web manager
-- Server log viewer
-- Backup/restore functionality
+### 3.3 minecraft-idle-monitor.service
 
----
-This spec provides a clear roadmap for implementing the Minecraft Manager as described.
+- Runs idle monitor using `/opt/minecraftmanager/.venv/bin/python /opt/minecraftmanager/actions/idle_monitor.py`.
+- Enabled and started during install (`systemctl enable --now minecraft-idle-monitor`).
+
+## 4) Web UI Behavior
+
+### 4.1 Home Page
+
+- Shows server status and user count when running.
+- Shows start/stop controls (contextual by current server state).
+- Shows editable whitelist JSON text area.
+- Shows error log buffer (last 100 entries) with clear action.
+
+### 4.2 Routes
+
+- `GET /` renders dashboard.
+- `POST /start` starts server workflow.
+- `POST /stop` stops Minecraft service.
+- `POST /whitelist` updates whitelist JSON and restarts server.
+- `POST /errors/clear` clears in-memory app error log.
+- `GET /status` returns JSON status (`running`, `users`).
+
+## 5) Server Control Workflows
+
+### 5.1 Start Workflow (`actions/start_server.py`)
+
+- Ensures `/opt/minecraft` exists.
+- Checks Mojang version manifest.
+- Downloads/updates `server.jar` when missing or outdated.
+- Writes `eula=true` to `eula.txt`.
+- Ensures `enforce-whitelist=true` in `server.properties`.
+- Starts `minecraft` service via systemd.
+- Clears idle-shutdown notice file if present.
+
+### 5.2 Stop Workflow (`actions/stop_server.py`)
+
+- Stops `minecraft` service via systemd.
+- Clears idle-shutdown notice file if present.
+
+### 5.3 Whitelist Workflow (`actions/update_whitelist.py`)
+
+- Overwrites `/opt/minecraft/whitelist.json` with submitted JSON.
+- Stops and restarts `minecraft` service.
+- Clears idle-shutdown notice file if present.
+
+## 6) Idle Shutdown Design
+
+Implemented by `actions/idle_monitor.py` and `minecraft-idle-monitor.service`.
+
+- Poll interval: 60 seconds.
+- Idle threshold: 30 consecutive minutes with zero online users.
+- Player count source: `mcstatus` query to server host/port (derived from `server.properties`, defaults to `127.0.0.1:25565`).
+- If threshold reached:
+  - Stops `minecraft` service.
+  - Writes inactivity notice file: `/opt/minecraft/idle_shutdown_notice.json`.
+
+Web app reads this notice and displays a status message indicating server stopped due to inactivity.
+
+## 7) File/Module Map (Current)
+
+- `main.py`: Flask app and request handlers
+- `actions/start_server.py`: startup/update logic
+- `actions/stop_server.py`: stop logic
+- `actions/update_whitelist.py`: whitelist + restart logic
+- `actions/idle_monitor.py`: idle detection + auto-stop
+- `minecraft.service`: Minecraft systemd unit
+- `minecraft-manager.service`: web UI systemd unit
+- `minecraft-idle-monitor.service`: idle monitor systemd unit
+- `update_install.sh`: installer/updater and systemd setup
+- `templates/index.html`, `static/style.css`: UI
+
+## 8) Out of Scope (Current Build)
+
+- Authentication/authorization
+- Multi-server management
+- Built-in backup scheduler
+- In-app live log streaming UI
