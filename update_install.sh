@@ -58,7 +58,6 @@ fi
 
 
 echo "Application install complete."
-echo "Use '$VENV_DIR/bin/python $APP_DIR/main.py' to run the web manager manually."
 
 
 echo "Setting up Minecraft server as a systemd service..."
@@ -72,6 +71,11 @@ cp "$APP_DIR/minecraft.service" /etc/systemd/system/minecraft.service
 chown root:root /etc/systemd/system/minecraft.service
 chmod 644 /etc/systemd/system/minecraft.service
 
+# Copy web manager systemd unit file
+cp "$APP_DIR/minecraft-manager.service" /etc/systemd/system/minecraft-manager.service
+chown root:root /etc/systemd/system/minecraft-manager.service
+chmod 644 /etc/systemd/system/minecraft-manager.service
+
 # Copy idle monitor systemd unit file
 cp "$APP_DIR/minecraft-idle-monitor.service" /etc/systemd/system/minecraft-idle-monitor.service
 chown root:root /etc/systemd/system/minecraft-idle-monitor.service
@@ -80,10 +84,11 @@ chmod 644 /etc/systemd/system/minecraft-idle-monitor.service
 # Ensure server files owned by minecraft user
 chown -R minecraft:minecraft "$SERVER_DIR"
 
-# Enable the service (do not start)
+# Enable services (start web manager now)
 systemctl daemon-reload
 systemctl enable minecraft
-systemctl enable minecraft-idle-monitor
+systemctl enable --now minecraft-manager
+systemctl enable --now minecraft-idle-monitor
 
-echo "Minecraft server and idle monitor systemd service setup complete."
+echo "Minecraft server, web manager, and idle monitor systemd service setup complete."
 
