@@ -1,8 +1,10 @@
 
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_from_directory
+
 import threading, time, os, json, subprocess
 from collections import deque
 from datetime import datetime, UTC
+from mcstatus import JavaServer
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 error_log = deque(maxlen=100)
@@ -15,8 +17,14 @@ def log_error(message, exc=None):
     error_log.append(entry)
 
 def get_connected_users():
-    # TODO: Implement logic to check connected users (e.g., query server or parse logs)
-    return 0
+    try:
+        # Default to localhost and port 25565, adjust if needed
+        server = JavaServer.lookup("localhost:25565")
+        status = server.status()
+        return status.players.online
+    except Exception as e:
+        log_error(f"mcstatus error: {e}")
+        return 0
 
 def start_server():
     try:
