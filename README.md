@@ -50,3 +50,17 @@ A development environment for managing Minecraft servers and scripts, using Pyth
 
 ## Usage (Production/Target Install)
 Run the TL;DR command above. All manager code will be in `/opt/minecraftmanager` and the Minecraft server in `/opt/minecraft`.
+
+## Idle Shutdown Monitor Service
+The project includes a systemd service that checks the Minecraft server every minute and stops it after 30 consecutive minutes with zero players online.
+
+Service file:
+- `minecraft-idle-monitor.service`
+
+On an existing install, you can enable/start it with:
+
+```sh
+sudo cp /opt/minecraftmanager/minecraft-idle-monitor.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now minecraft-idle-monitor
+```

@@ -1,0 +1,15 @@
+[Unit]
+Description=Minecraft idle monitor (auto-stop after inactivity)
+After=network.target minecraft.service
+Wants=minecraft.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/minecraftmanager
+ExecStart=/opt/minecraftmanager/.venv/bin/python /opt/minecraftmanager/actions/idle_monitor.py
+Restart=always
+RestartSec=10
+User=root
+
+[Install]
+WantedBy=multi-user.target

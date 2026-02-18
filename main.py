@@ -8,6 +8,7 @@ from mcstatus import JavaServer
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 error_log = deque(maxlen=100)
+IDLE_NOTICE_PATH = "/opt/minecraft/idle_shutdown_notice.json"
 
 def log_error(message, exc=None):
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -83,6 +84,24 @@ def get_whitelist_json():
 def get_error_log():
     return list(error_log)
 
+
+def get_idle_shutdown_notice_message():
+    if not os.path.exists(IDLE_NOTICE_PATH):
+        return None
+    try:
+        with open(IDLE_NOTICE_PATH, "r", encoding="utf-8") as notice_file:
+            payload = json.load(notice_file)
+        if payload.get("reason") != "inactivity":
+            return None
+        timeout_minutes = payload.get("idle_timeout_minutes", 30)
+        stopped_at_utc = payload.get("stopped_at_utc")
+        if stopped_at_utc:
+            return f"Server stopped due to inactivity ({timeout_minutes} minutes with no users). Time: {stopped_at_utc}"
+        return f"Server stopped due to inactivity ({timeout_minutes} minutes with no users)."
+    except Exception as e:
+        log_error("Failed to load idle shutdown notice", e)
+        return None
+
 def get_status_message():
     try:
         status = subprocess.run(["systemctl", "is-active", "minecraft"], capture_output=True, text=True)
@@ -93,6 +112,9 @@ def get_status_message():
     if running:
         return f"Server running. Users: {users}", False, True
     else:
+        idle_notice = get_idle_shutdown_notice_message()
+        if idle_notice:
+            return idle_notice, False, False
         return "Server stopped.", False, False
 
 @app.route("/", methods=["GET"])

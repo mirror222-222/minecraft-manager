@@ -6,6 +6,7 @@ import json
 
 
 log_messages = []
+IDLE_NOTICE_PATH = "/opt/minecraft/idle_shutdown_notice.json"
 from datetime import datetime, UTC
 def log_error(message, exc=None):
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -13,6 +14,15 @@ def log_error(message, exc=None):
     if exc is not None:
         entry += f" | {type(exc).__name__}: {exc}"
     log_messages.append(entry)
+
+
+def clear_idle_shutdown_notice():
+    try:
+        if os.path.exists(IDLE_NOTICE_PATH):
+            os.remove(IDLE_NOTICE_PATH)
+            log_messages.append("[INFO] Cleared idle shutdown notice.")
+    except Exception as e:
+        log_error("Failed to clear idle shutdown notice", e)
 
 def start_server():
     try:
@@ -96,6 +106,7 @@ def start_server():
                 log_error(msg)
                 log_messages.append(f"[ERROR] {msg}")
                 return False, msg
+            clear_idle_shutdown_notice()
             # Get server IP and port from server.properties
             props_path = os.path.join(server_dir, "server.properties")
             server_ip = "0.0.0.0"

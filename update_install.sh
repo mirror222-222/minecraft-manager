@@ -57,12 +57,8 @@ if [ -f requirements.txt ]; then
 fi
 
 
-echo "Running application..."
-if [ -f main.py ]; then
-    "$VENV_DIR/bin/python" main.py
-else
-    echo "main.py not found."
-fi
+echo "Application install complete."
+echo "Use '$VENV_DIR/bin/python $APP_DIR/main.py' to run the web manager manually."
 
 
 echo "Setting up Minecraft server as a systemd service..."
@@ -76,13 +72,18 @@ cp "$APP_DIR/minecraft.service" /etc/systemd/system/minecraft.service
 chown root:root /etc/systemd/system/minecraft.service
 chmod 644 /etc/systemd/system/minecraft.service
 
+# Copy idle monitor systemd unit file
+cp "$APP_DIR/minecraft-idle-monitor.service" /etc/systemd/system/minecraft-idle-monitor.service
+chown root:root /etc/systemd/system/minecraft-idle-monitor.service
+chmod 644 /etc/systemd/system/minecraft-idle-monitor.service
+
 # Ensure server files owned by minecraft user
 chown -R minecraft:minecraft "$SERVER_DIR"
 
 # Enable the service (do not start)
 systemctl daemon-reload
 systemctl enable minecraft
+systemctl enable minecraft-idle-monitor
 
-echo "Minecraft server systemd service setup complete."
-    SERVER_JAR_URL=$(echo "$VERSION_JSON" | python3 -c "import sys, json; print(json.load(sys.stdin)['downloads']['server']['url'])")
+echo "Minecraft server and idle monitor systemd service setup complete."
 

@@ -1,0 +1,140 @@
+import os
+import subprocess
+import time
+from datetime import datetime, UTC
+
+from mcstatus import JavaServer
+
+CHECK_INTERVAL_SECONDS = 60
+IDLE_TIMEOUT_MINUTES = 30
+MINECRAFT_SERVICE_NAME = "minecraft"
+SERVER_PROPERTIES_PATH = "/opt/minecraft/server.properties"
+IDLE_NOTICE_PATH = "/opt/minecraft/idle_shutdown_notice.json"
+DEFAULT_SERVER_HOST = "127.0.0.1"
+DEFAULT_SERVER_PORT = 25565
+
+
+def log(message: str) -> None:
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+    print(f"[{timestamp}] {message}", flush=True)
+
+
+def read_server_target() -> tuple[str, int]:
+    host = DEFAULT_SERVER_HOST
+    port = DEFAULT_SERVER_PORT
+
+    if not os.path.exists(SERVER_PROPERTIES_PATH):
+        return host, port
+
+    try:
+        with open(SERVER_PROPERTIES_PATH, "r", encoding="utf-8") as properties_file:
+            for raw_line in properties_file:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip()
+
+                if key == "server-port" and value:
+                    try:
+                        port = int(value)
+                    except ValueError:
+                        log(f"Invalid server-port in server.properties: {value}")
+                elif key == "server-ip" and value:
+                    host = value
+    except Exception as exc:
+        log(f"Failed to parse server.properties: {exc}")
+
+    return host, port
+
+
+def is_server_active() -> bool:
+    result = subprocess.run(
+        ["systemctl", "is-active", MINECRAFT_SERVICE_NAME],
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip() == "active"
+
+
+def get_online_players(host: str, port: int) -> int | None:
+    try:
+        server = JavaServer.lookup(f"{host}:{port}")
+        status = server.status()
+        return status.players.online
+    except Exception as exc:
+        log(f"Failed to query online player count: {exc}")
+        return None
+
+
+def stop_minecraft_server() -> bool:
+    result = subprocess.run(
+        ["systemctl", "stop", MINECRAFT_SERVICE_NAME],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        log(f"Failed to stop minecraft service: {result.stderr.strip()}")
+        return False
+    return True
+
+
+def write_idle_shutdown_notice() -> None:
+    payload = {
+        "reason": "inactivity",
+        "idle_timeout_minutes": IDLE_TIMEOUT_MINUTES,
+        "stopped_at_utc": datetime.now(UTC).isoformat(),
+    }
+    try:
+        with open(IDLE_NOTICE_PATH, "w", encoding="utf-8") as notice_file:
+            import json
+
+            json.dump(payload, notice_file)
+    except Exception as exc:
+        log(f"Failed to write idle shutdown notice: {exc}")
+
+
+def main() -> None:
+    idle_minutes = 0
+    log(
+        "Minecraft idle monitor started "
+        f"(timeout={IDLE_TIMEOUT_MINUTES} minutes, interval={CHECK_INTERVAL_SECONDS} seconds)."
+    )
+
+    while True:
+        if not is_server_active():
+            if idle_minutes != 0:
+                log("Minecraft service is not active. Idle timer reset.")
+            idle_minutes = 0
+            time.sleep(CHECK_INTERVAL_SECONDS)
+            continue
+
+        host, port = read_server_target()
+        online_players = get_online_players(host, port)
+
+        if online_players is None:
+            time.sleep(CHECK_INTERVAL_SECONDS)
+            continue
+
+        if online_players > 0:
+            if idle_minutes != 0:
+                log(f"Players online ({online_players}). Idle timer reset.")
+            idle_minutes = 0
+        else:
+            idle_minutes += 1
+            log(f"No players online. Idle minute {idle_minutes}/{IDLE_TIMEOUT_MINUTES}.")
+
+            if idle_minutes >= IDLE_TIMEOUT_MINUTES:
+                log("Idle timeout reached. Stopping minecraft service.")
+                if stop_minecraft_server():
+                    write_idle_shutdown_notice()
+                    log("Minecraft service stopped due to inactivity.")
+                idle_minutes = 0
+
+        time.sleep(CHECK_INTERVAL_SECONDS)
+
+
+if __name__ == "__main__":
+    main()
