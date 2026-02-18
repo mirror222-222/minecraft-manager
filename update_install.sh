@@ -1,3 +1,6 @@
+#!/bin/bash
+# update_install.sh - Simple script to update or install this project from its git repository
+
 # Detect total RAM and optimize Minecraft JVM memory allocation
 TOTAL_RAM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
 # Allocate 75% to Minecraft, max 12288MB (12GB)
@@ -10,9 +13,6 @@ if [ -f minecraft.service ]; then
     sed -i "s/-Xms[0-9]*M/-Xms${MC_RAM_MB}M/" minecraft.service
     echo "minecraft.service updated with -Xmx${MC_RAM_MB}M and -Xms${MC_RAM_MB}M"
 fi
-#!/bin/bash
-# update_install.sh - Simple script to update or install this project from its git repository
-
 
 # Install prerequisites: curl, python3, python3-venv, default-jre-headless
 echo "Installing prerequisites: curl, python3, python3-venv, default-jre-headless..."
@@ -104,3 +104,5 @@ systemctl enable --now minecraft-idle-monitor
 
 echo "Minecraft server, web manager, and idle monitor systemd service setup complete."
 
+# Ask user to reboot after install
+echo "Please reboot the server to apply all changes."
