@@ -1,23 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify, send_from_directory
 
-import threading
-import time
-import os
-import json
-import subprocess
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_from_directory
+import threading, time, os, json, subprocess
 from collections import deque
-from datetime import datetime
+from datetime import datetime, UTC
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
-
-# Globals for idle shutdown
-last_user_activity = time.time()
-idle_minutes = 30
-user_check_interval = 60  # seconds
-server_running = False
 error_log = deque(maxlen=100)
 
-from datetime import datetime, UTC
 def log_error(message, exc=None):
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     entry = f"[{timestamp}] {message}"
@@ -25,26 +14,13 @@ def log_error(message, exc=None):
         entry += f" | {type(exc).__name__}: {exc}"
     error_log.append(entry)
 
-def check_users_periodically():
-    global last_user_activity, server_running
-    while True:
-        if server_running:
-            user_count = get_connected_users()
-            if user_count > 0:
-                last_user_activity = time.time()
-            elif time.time() - last_user_activity > idle_minutes * 60:
-                stop_server()
-                server_running = False
-        time.sleep(user_check_interval)
-
 def get_connected_users():
     # TODO: Implement logic to check connected users (e.g., query server or parse logs)
     return 0
 
-
 def start_server():
     try:
-        result = subprocess.run(["python3", "actions/start_server.py"], capture_output=True, text=True)
+        result = subprocess.run(["python3", os.path.abspath("actions/start_server.py")], capture_output=True, text=True)
         if result.returncode == 0:
             output = json.loads(result.stdout)
             logs = output.get("log", [])
@@ -58,10 +34,9 @@ def start_server():
         log_error("start_server exception", e)
         return False, str(e)
 
-
 def stop_server():
     try:
-        result = subprocess.run(["python3", "actions/stop_server.py"], capture_output=True, text=True)
+        result = subprocess.run(["python3", os.path.abspath("actions/stop_server.py")], capture_output=True, text=True)
         if result.returncode == 0:
             output = json.loads(result.stdout)
             return output.get("success", False), output.get("message", "")
@@ -72,11 +47,10 @@ def stop_server():
         log_error("stop_server exception", e)
         return False, str(e)
 
-
 def update_whitelist(data):
     try:
         result = subprocess.run([
-            "python3", "actions/update_whitelist.py", json.dumps(data)
+            "python3", os.path.abspath("actions/update_whitelist.py"), json.dumps(data)
         ], capture_output=True, text=True)
         if result.returncode == 0:
             output = json.loads(result.stdout)
@@ -88,20 +62,20 @@ def update_whitelist(data):
         log_error("update_whitelist exception", e)
         return False, str(e)
 
-
 def get_whitelist_json():
+    whitelist_path = "/opt/minecraft/whitelist.json"
     try:
-        with open('whitelist.json') as f:
+        with open(whitelist_path) as f:
             data = json.load(f)
         return json.dumps(data, indent=2)
-    except Exception:
+    except Exception as e:
+        log_error(f"Failed to load whitelist.json: {e}")
         return "[]"
 
 def get_error_log():
     return list(error_log)
 
 def get_status_message():
-    # Check actual Minecraft server status using systemctl
     try:
         status = subprocess.run(["systemctl", "is-active", "minecraft"], capture_output=True, text=True)
         running = status.stdout.strip() == "active"
@@ -125,7 +99,6 @@ def index():
         error_log=get_error_log()
     )
 
-
 @app.route("/start", methods=["POST"])
 def start():
     success, msg = start_server()
@@ -140,9 +113,11 @@ def stop():
 def whitelist():
     try:
         data = json.loads(request.form["whitelistBox"])
-    except Exception:
+    except Exception as e:
+        log_error(f"Invalid JSON in whitelist: {e}")
         return redirect(url_for("index"))
     success, msg = update_whitelist(data)
+    time.sleep(0.1)  # Ensure file write completes
     return redirect(url_for("index"))
 
 @app.route("/errors/clear", methods=["POST"])
@@ -161,11 +136,8 @@ def favicon():
 
 @app.route("/status")
 def status():
-    # TODO: Return server status and user count
+    status_message, status_error, server_running = get_status_message()
     return jsonify({"running": server_running, "users": get_connected_users()})
 
 if __name__ == "__main__":
-    # Start background thread for user check
-    t = threading.Thread(target=check_users_periodically, daemon=True)
-    t.start()
     app.run(host="0.0.0.0", port=5000)
