@@ -10,9 +10,19 @@
     {% if status_message %}
     <div id="status" class="status-{% if status_error %}error{% else %}success{% endif %}">{{ status_message }}</div>
     {% endif %}
+    {% if external_access.enabled == true %}
+    <div id="external-access-status" class="status-success">{{ external_access.label }}</div>
+    {% elif external_access.enabled == false %}
+    <div id="external-access-status" class="status-error">{{ external_access.label }}</div>
+    {% else %}
+    <div id="external-access-status">{{ external_access.label }}</div>
+    {% endif %}
     {% if server_running %}
         <form method="post" action="/stop">
             <button type="submit" class="btn-stop">Stop Minecraft</button>
+        </form>
+        <form method="post" action="/allow-external-access">
+            <button type="submit">Allow External Access</button>
         </form>
     {% else %}
         <form method="post" action="/start">

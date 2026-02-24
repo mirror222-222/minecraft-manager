@@ -93,6 +93,22 @@ cp "$APP_DIR/minecraft-idle-monitor.service" /etc/systemd/system/minecraft-idle-
 chown root:root /etc/systemd/system/minecraft-idle-monitor.service
 chmod 644 /etc/systemd/system/minecraft-idle-monitor.service
 
+# Prepare OPNsense API environment file (root-only)
+mkdir -p /etc/minecraft-manager
+if [ ! -f /etc/minecraft-manager/opnsense.env ]; then
+    cat > /etc/minecraft-manager/opnsense.env << 'EOF'
+# OPNsense API configuration
+# OPNSENSE_URL="https://opnsense.example.com"
+# OPNSENSE_API_KEY="your_api_key"
+# OPNSENSE_API_SECRET="your_api_secret"
+# OPNSENSE_RULE_UUID="your_rule_uuid"
+# Optional: set to 1 to verify TLS certificates (default is 0)
+# OPNSENSE_VERIFY_TLS="0"
+EOF
+fi
+chown root:root /etc/minecraft-manager/opnsense.env
+chmod 600 /etc/minecraft-manager/opnsense.env
+
 # Ensure server files owned by minecraft user
 chown -R minecraft:minecraft "$SERVER_DIR"
 

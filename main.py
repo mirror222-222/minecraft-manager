@@ -56,6 +56,55 @@ def stop_server():
         log_error("stop_server exception", e)
         return False, str(e)
 
+
+def allow_external_access():
+    try:
+        result = subprocess.run(
+            [sys.executable, os.path.abspath("actions/allow_external_access.py")],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            output = json.loads(result.stdout)
+            return output.get("success", False), output.get("message", "")
+        log_error(f"allow_external_access.py failed: {result.stderr}")
+        return False, result.stderr
+    except Exception as e:
+        log_error("allow_external_access exception", e)
+        return False, str(e)
+
+
+def get_external_access_status():
+    default_status = {
+        "configured": False,
+        "enabled": None,
+        "label": "External access status unavailable",
+        "message": "Configure OPNsense environment variables to show status",
+    }
+
+    try:
+        result = subprocess.run(
+            [sys.executable, os.path.abspath("actions/get_external_access_status.py")],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            log_error(f"get_external_access_status.py failed: {result.stderr}")
+            return default_status
+
+        output = json.loads(result.stdout)
+        if isinstance(output, dict):
+            return {
+                "configured": output.get("configured", False),
+                "enabled": output.get("enabled", None),
+                "label": output.get("label", default_status["label"]),
+                "message": output.get("message", default_status["message"]),
+            }
+        return default_status
+    except Exception as e:
+        log_error("get_external_access_status exception", e)
+        return default_status
+
 def update_whitelist(data):
     try:
         result = subprocess.run([
@@ -120,11 +169,13 @@ def get_status_message():
 @app.route("/", methods=["GET"])
 def index():
     status_message, status_error, server_running = get_status_message()
+    external_access = get_external_access_status()
     return render_template(
         "index.html",
         status_message=status_message,
         status_error=status_error,
         server_running=server_running,
+        external_access=external_access,
         whitelist_json=get_whitelist_json(),
         error_log=get_error_log()
     )
@@ -137,6 +188,12 @@ def start():
 @app.route("/stop", methods=["POST"])
 def stop():
     success, msg = stop_server()
+    return redirect(url_for("index"))
+
+
+@app.route("/allow-external-access", methods=["POST"])
+def allow_external_access_route():
+    success, msg = allow_external_access()
     return redirect(url_for("index"))
 
 @app.route("/whitelist", methods=["POST"])

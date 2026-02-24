@@ -6,6 +6,7 @@ Wants=minecraft.service
 [Service]
 Type=simple
 WorkingDirectory=/opt/minecraftmanager
+EnvironmentFile=-/etc/minecraft-manager/opnsense.env
 ExecStart=/opt/minecraftmanager/.venv/bin/python /opt/minecraftmanager/actions/idle_monitor.py
 Restart=always
 RestartSec=10
