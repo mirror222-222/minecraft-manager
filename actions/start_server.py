@@ -3,11 +3,13 @@ import os
 import datetime
 import time
 import json
+import sys
 
-try:
-    from discord_notify import send_discord_notification
-except ModuleNotFoundError:
-    from actions.discord_notify import send_discord_notification
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+if CURRENT_DIR not in sys.path:
+    sys.path.insert(0, CURRENT_DIR)
+
+from discord_notify import send_discord_notification
 
 
 log_messages = []
@@ -28,6 +30,66 @@ def clear_idle_shutdown_notice():
             log_messages.append("[INFO] Cleared idle shutdown notice.")
     except Exception as e:
         log_error("Failed to clear idle shutdown notice", e)
+
+
+def _split_property_line(line):
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#") or "=" not in stripped:
+        return None, None
+    key, value = stripped.split("=", 1)
+    return key.strip(), value.strip()
+
+
+def _normalize_server_properties(lines, overrides):
+    last_index_by_key = {}
+    parsed_lines = []
+
+    for index, line in enumerate(lines):
+        key, _ = _split_property_line(line)
+        parsed_lines.append((line, key))
+        if key is not None:
+            last_index_by_key[key] = index
+
+    normalized_lines = []
+    seen_override_keys = set()
+
+    for index, (original_line, key) in enumerate(parsed_lines):
+        if key is None:
+            normalized_lines.append(original_line)
+            continue
+
+        if last_index_by_key.get(key) != index:
+            continue
+
+        if key in overrides:
+            normalized_lines.append(f"{key}={overrides[key]}\n")
+            seen_override_keys.add(key)
+        else:
+            normalized_lines.append(original_line)
+
+    for override_key, override_value in overrides.items():
+        if override_key not in seen_override_keys:
+            normalized_lines.append(f"{override_key}={override_value}\n")
+
+    return normalized_lines
+
+
+def _ensure_server_properties(props_path):
+    override_properties = {
+        "enforce-whitelist": "true",
+    }
+
+    if os.path.exists(props_path):
+        log_messages.append("[INFO] Normalizing server.properties and enforcing whitelist settings...")
+        with open(props_path, "r", encoding="utf-8") as properties_file:
+            lines = properties_file.readlines()
+        normalized_lines = _normalize_server_properties(lines, override_properties)
+    else:
+        log_messages.append("[INFO] Creating server.properties with whitelist settings...")
+        normalized_lines = [f"{key}={value}\n" for key, value in override_properties.items()]
+
+    with open(props_path, "w", encoding="utf-8") as properties_file:
+        properties_file.writelines(normalized_lines)
 
 def start_server():
     try:
@@ -85,23 +147,7 @@ def start_server():
         with open(os.path.join(server_dir, "eula.txt"), "w") as f:
             f.write("eula=true\n")
         props = os.path.join(server_dir, "server.properties")
-        if os.path.exists(props):
-            log_messages.append("[INFO] Updating server.properties to enforce whitelist...")
-            with open(props) as f:
-                lines = f.readlines()
-            found = False
-            for i, line in enumerate(lines):
-                if line.startswith("enforce-whitelist"):
-                    lines[i] = "enforce-whitelist=true\n"
-                    found = True
-            if not found:
-                lines.append("enforce-whitelist=true\n")
-            with open(props, "w") as f:
-                f.writelines(lines)
-        else:
-            log_messages.append("[INFO] Creating server.properties with enforce-whitelist...")
-            with open(props, "w") as f:
-                f.write("enforce-whitelist=true\n")
+        _ensure_server_properties(props)
         # Start the Minecraft server as a systemd service
         log_messages.append("[INFO] Starting Minecraft server via systemd service...")
         try:
