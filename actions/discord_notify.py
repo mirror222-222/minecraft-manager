@@ -103,7 +103,10 @@ def send_discord_notification(event_name, success=True, detail=""):
         config["webhook_url"],
         data=json.dumps(payload).encode("utf-8"),
         method="POST",
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        },
     )
 
     ssl_context = None
