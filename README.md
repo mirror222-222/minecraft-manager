@@ -2,6 +2,16 @@
 
 Web-based manager for a Minecraft Java server with systemd integration.
 
+## About
+
+I wanted a simple way to run a private Minecraft Java server behind my OPNsense firewall DMZ. This program runs on a dedicated Debian server and provides a web interface to start and stop Minecraft, plus enable and disable public access through OPNsense firewall rules.
+
+It monitors the Minecraft server and, if no one has been playing for 30 minutes, it stops the server and disables public access through the firewall API. It also enforces whitelist-only access, so my kids can add friends by username and UUID before they can join. This helps avoid leaving an unused Minecraft server exposed to the internet. The scripts run as services, monitor server state, and automatically shut down both the server and firewall access if they are accidentally left running.
+
+It is also set up to pull the latest vanilla Minecraft Java server and apply daily unattended security updates to reduce attack surface.
+
+If you have a dedicated system, all you need is a minimal Debian install. Run the installer below and it will do the rest. Then add your API keys as directed below for your OPNsense firewall (after manually creating the NAT and firewall rules, and providing the UUID for the rule). Finally, connect to your management site on port 5000 and enjoy your private Minecraft Java server at home, shareable only when you choose.
+
 ## 1) Purpose
 
 Minecraft Manager provides a web UI and automation for operating a Minecraft Java server on Linux.
