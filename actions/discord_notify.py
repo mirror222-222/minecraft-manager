@@ -1,13 +1,15 @@
 import json
 import os
 import ssl
-import subprocess
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, UTC
 
 
 DISCORD_ENV_FILE_PATH = "/etc/minecraft-manager/discord.env"
+MAX_RETRIES = 3
+RETRY_DELAY_SECONDS = 1.0
 
 
 def _strip_wrapping_quotes(value):
@@ -72,14 +74,6 @@ def load_discord_config():
         "username": _get_config_value("DISCORD_WEBHOOK_USERNAME", env_file_values),
         "avatar_url": _get_config_value("DISCORD_WEBHOOK_AVATAR_URL", env_file_values),
         "mention": _get_config_value("DISCORD_MENTION", env_file_values),
-        "user_agent": _get_config_value("DISCORD_USER_AGENT", env_file_values)
-        or "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "force_ipv4": _get_config_value("DISCORD_FORCE_IPV4", env_file_values).lower() in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        },
         "verify_tls": verify_tls,
     }, None
 
@@ -115,7 +109,7 @@ def send_discord_notification(event_name, success=True, detail=""):
         headers={
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": config["user_agent"],
+            "User-Agent": "MinecraftManager/1.0",
         },
     )
 
@@ -125,86 +119,46 @@ def send_discord_notification(event_name, success=True, detail=""):
         ssl_context.check_hostname = False
         ssl_context.verify_mode = ssl.CERT_NONE
 
-    try:
-        with urllib.request.urlopen(request, context=ssl_context, timeout=15):
-            return True, "Discord notification sent"
-    except urllib.error.HTTPError as exc:
-        response_body = ""
+    for attempt in range(1, MAX_RETRIES + 1):
         try:
-            response_body = exc.read().decode("utf-8", errors="replace").strip()
-        except Exception:
-            response_body = ""
+            with urllib.request.urlopen(request, context=ssl_context, timeout=15):
+                return True, "Discord notification sent"
+        except urllib.error.HTTPError as exc:
+            error_message, error_code = _parse_http_error(exc)
+            if exc.code in {429, 500, 502, 503, 504} and attempt < MAX_RETRIES:
+                time.sleep(RETRY_DELAY_SECONDS * attempt)
+                continue
+            if error_code is not None:
+                return False, f"Discord webhook HTTP error: {exc.code} ({error_message}, code={error_code})"
+            return False, f"Discord webhook HTTP error: {exc.code} ({error_message})"
+        except urllib.error.URLError as exc:
+            if attempt < MAX_RETRIES:
+                time.sleep(RETRY_DELAY_SECONDS * attempt)
+                continue
+            return False, f"Discord webhook connection error: {exc.reason}"
+        except Exception as exc:
+            if attempt < MAX_RETRIES:
+                time.sleep(RETRY_DELAY_SECONDS * attempt)
+                continue
+            return False, f"Discord notification error: {exc}"
 
-        if response_body:
-            try:
-                payload = json.loads(response_body)
-                message = payload.get("message")
-                error_code = payload.get("code")
-                if message and error_code is not None:
-                    if exc.code == 403 and str(error_code) == "1010":
-                        curl_ok, curl_msg = _send_discord_with_curl(config, payload)
-                        if curl_ok:
-                            return True, "Discord notification sent (curl fallback)"
-                    return False, f"Discord webhook HTTP error: {exc.code} ({message}, code={error_code})"
-                if message:
-                    return False, f"Discord webhook HTTP error: {exc.code} ({message})"
-            except Exception:
-                pass
-            return False, f"Discord webhook HTTP error: {exc.code} ({response_body})"
-
-        return False, f"Discord webhook HTTP error: {exc.code}"
-    except urllib.error.URLError as exc:
-        return False, f"Discord webhook connection error: {exc.reason}"
-    except Exception as exc:
-        return False, f"Discord notification error: {exc}"
+    return False, "Discord notification failed after retries"
 
 
-def _send_discord_with_curl(config, payload):
-    command = [
-        "curl",
-        "--silent",
-        "--show-error",
-        "--output",
-        "/tmp/discord_webhook_response.txt",
-        "--write-out",
-        "%{http_code}",
-        "-X",
-        "POST",
-        "-H",
-        "Content-Type: application/json",
-        "-H",
-        "Accept: application/json",
-        "-A",
-        config["user_agent"],
-        "--data",
-        json.dumps(payload),
-        config["webhook_url"],
-    ]
-
-    if config["force_ipv4"]:
-        command.insert(1, "-4")
-    if not config["verify_tls"]:
-        command.insert(1, "-k")
-
-    try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=20)
-    except Exception as exc:
-        return False, f"Discord curl fallback error: {exc}"
-
-    if result.returncode != 0:
-        return False, f"Discord curl fallback failed: {result.stderr.strip() or result.stdout.strip()}"
-
-    http_code = (result.stdout or "").strip()
-    if http_code == "204":
-        return True, "Discord notification sent"
-
+def _parse_http_error(exc):
     response_body = ""
     try:
-        with open("/tmp/discord_webhook_response.txt", "r", encoding="utf-8") as response_file:
-            response_body = response_file.read().strip()
+        response_body = exc.read().decode("utf-8", errors="replace").strip()
     except Exception:
         response_body = ""
 
-    if response_body:
-        return False, f"Discord curl fallback HTTP error: {http_code} ({response_body})"
-    return False, f"Discord curl fallback HTTP error: {http_code}"
+    if not response_body:
+        return "No response body", None
+
+    try:
+        payload = json.loads(response_body)
+        message = payload.get("message") or response_body
+        error_code = payload.get("code")
+        return message, error_code
+    except Exception:
+        return response_body, None
