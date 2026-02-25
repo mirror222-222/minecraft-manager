@@ -1,6 +1,7 @@
 import json
 import os
 import ssl
+import subprocess
 import urllib.error
 import urllib.request
 from datetime import datetime, UTC
@@ -71,6 +72,14 @@ def load_discord_config():
         "username": _get_config_value("DISCORD_WEBHOOK_USERNAME", env_file_values),
         "avatar_url": _get_config_value("DISCORD_WEBHOOK_AVATAR_URL", env_file_values),
         "mention": _get_config_value("DISCORD_MENTION", env_file_values),
+        "user_agent": _get_config_value("DISCORD_USER_AGENT", env_file_values)
+        or "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "force_ipv4": _get_config_value("DISCORD_FORCE_IPV4", env_file_values).lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        },
         "verify_tls": verify_tls,
     }, None
 
@@ -105,7 +114,8 @@ def send_discord_notification(event_name, success=True, detail=""):
         method="POST",
         headers={
             "Content-Type": "application/json",
-            "Accept": "application/json"
+            "Accept": "application/json",
+            "User-Agent": config["user_agent"],
         },
     )
 
@@ -131,6 +141,10 @@ def send_discord_notification(event_name, success=True, detail=""):
                 message = payload.get("message")
                 error_code = payload.get("code")
                 if message and error_code is not None:
+                    if exc.code == 403 and str(error_code) == "1010":
+                        curl_ok, curl_msg = _send_discord_with_curl(config, payload)
+                        if curl_ok:
+                            return True, "Discord notification sent (curl fallback)"
                     return False, f"Discord webhook HTTP error: {exc.code} ({message}, code={error_code})"
                 if message:
                     return False, f"Discord webhook HTTP error: {exc.code} ({message})"
@@ -143,3 +157,54 @@ def send_discord_notification(event_name, success=True, detail=""):
         return False, f"Discord webhook connection error: {exc.reason}"
     except Exception as exc:
         return False, f"Discord notification error: {exc}"
+
+
+def _send_discord_with_curl(config, payload):
+    command = [
+        "curl",
+        "--silent",
+        "--show-error",
+        "--output",
+        "/tmp/discord_webhook_response.txt",
+        "--write-out",
+        "%{http_code}",
+        "-X",
+        "POST",
+        "-H",
+        "Content-Type: application/json",
+        "-H",
+        "Accept: application/json",
+        "-A",
+        config["user_agent"],
+        "--data",
+        json.dumps(payload),
+        config["webhook_url"],
+    ]
+
+    if config["force_ipv4"]:
+        command.insert(1, "-4")
+    if not config["verify_tls"]:
+        command.insert(1, "-k")
+
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=20)
+    except Exception as exc:
+        return False, f"Discord curl fallback error: {exc}"
+
+    if result.returncode != 0:
+        return False, f"Discord curl fallback failed: {result.stderr.strip() or result.stdout.strip()}"
+
+    http_code = (result.stdout or "").strip()
+    if http_code == "204":
+        return True, "Discord notification sent"
+
+    response_body = ""
+    try:
+        with open("/tmp/discord_webhook_response.txt", "r", encoding="utf-8") as response_file:
+            response_body = response_file.read().strip()
+    except Exception:
+        response_body = ""
+
+    if response_body:
+        return False, f"Discord curl fallback HTTP error: {http_code} ({response_body})"
+    return False, f"Discord curl fallback HTTP error: {http_code}"
