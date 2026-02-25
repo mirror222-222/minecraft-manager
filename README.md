@@ -19,6 +19,7 @@ This installs:
 - App code in `/opt/minecraftmanager`
 - Minecraft server files in `/opt/minecraft`
 - Python virtual environment in `/opt/minecraftmanager/.venv`
+- Daily distro security updates via unattended-upgrades
 
 ## 3) Runtime Layout
 
@@ -136,6 +137,40 @@ If a service does not start:
 sudo systemctl daemon-reload
 sudo systemctl restart minecraft-manager
 sudo systemctl restart minecraft-idle-monitor
+```
+
+### 7.1) Verify Daily Security Updates
+
+Check timers are enabled and active:
+
+```sh
+sudo systemctl status apt-daily.timer apt-daily-upgrade.timer
+```
+
+Check unattended-upgrades service status:
+
+```sh
+sudo systemctl status unattended-upgrades
+```
+
+View recent unattended-upgrades logs:
+
+```sh
+sudo tail -n 100 /var/log/unattended-upgrades/unattended-upgrades.log
+sudo tail -n 100 /var/log/unattended-upgrades/unattended-upgrades-dpkg.log
+```
+
+Check the configured auto-upgrade settings:
+
+```sh
+sudo cat /etc/apt/apt.conf.d/20auto-upgrades
+sudo cat /etc/apt/apt.conf.d/52minecraft-security-upgrades
+```
+
+Run a dry-run (no changes applied):
+
+```sh
+sudo unattended-upgrade --dry-run --debug
 ```
 
 ## 8) Project Layout

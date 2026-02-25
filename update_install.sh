@@ -17,7 +17,23 @@ fi
 # Install prerequisites: curl, python3, python3-venv, default-jre-headless
 echo "Installing prerequisites: curl, python3, python3-venv, default-jre-headless..."
 apt update && apt upgrade -y
-apt install -y curl python3 python3-venv default-jre-headless git
+apt install -y curl python3 python3-venv default-jre-headless git unattended-upgrades
+
+# Configure daily security updates
+cat > /etc/apt/apt.conf.d/20auto-upgrades << 'EOF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+EOF
+
+cat > /etc/apt/apt.conf.d/52minecraft-security-upgrades << 'EOF'
+Unattended-Upgrade::Origins-Pattern {
+    "origin=Debian,codename=${distro_codename},label=Debian-Security";
+    "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+};
+EOF
+
+systemctl enable --now apt-daily.timer apt-daily-upgrade.timer
+echo "Daily distro security updates enabled via unattended-upgrades."
 
 
 
