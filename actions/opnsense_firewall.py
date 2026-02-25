@@ -4,6 +4,7 @@ import os
 import ssl
 import urllib.error
 import urllib.request
+from redaction import redact_sensitive_text
 
 
 ENV_FILE_PATH = "/etc/minecraft-manager/opnsense.env"
@@ -124,20 +125,20 @@ def _opnsense_request(config, path, payload=None):
             result = response_json.get("result")
             if result == "failed":
                 message = response_json.get("message") or response_json.get("validations") or "OPNsense request failed"
-                return False, str(message)
+                return False, redact_sensitive_text(str(message))
             return True, None
     except urllib.error.HTTPError as exc:
         try:
             error_body = exc.read().decode("utf-8", errors="replace")
             if error_body:
-                return False, f"HTTP {exc.code} from OPNsense API: {error_body}"
+                return False, redact_sensitive_text(f"HTTP {exc.code} from OPNsense API: {error_body}")
         except Exception:
             pass
         return False, f"HTTP {exc.code} from OPNsense API"
     except urllib.error.URLError as exc:
-        return False, f"Failed to reach OPNsense API: {exc.reason}"
+        return False, redact_sensitive_text(f"Failed to reach OPNsense API: {exc.reason}")
     except Exception as exc:
-        return False, f"Unexpected OPNsense API error: {exc}"
+        return False, redact_sensitive_text(f"Unexpected OPNsense API error: {exc}")
 
 
 def set_rule_enabled(enabled):
@@ -228,13 +229,13 @@ def get_rule_enabled():
         try:
             error_body = exc.read().decode("utf-8", errors="replace")
             if error_body:
-                return None, f"HTTP {exc.code} from OPNsense API: {error_body}"
+                return None, redact_sensitive_text(f"HTTP {exc.code} from OPNsense API: {error_body}")
         except Exception:
             pass
         return None, f"HTTP {exc.code} from OPNsense API"
     except urllib.error.URLError as exc:
-        return None, f"Failed to reach OPNsense API: {exc.reason}"
+        return None, redact_sensitive_text(f"Failed to reach OPNsense API: {exc.reason}")
     except json.JSONDecodeError:
         return None, "OPNsense returned invalid JSON for rule status"
     except Exception as exc:
-        return None, f"Unexpected OPNsense API error: {exc}"
+        return None, redact_sensitive_text(f"Unexpected OPNsense API error: {exc}")

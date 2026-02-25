@@ -5,6 +5,7 @@ import time
 import urllib.error
 import urllib.request
 from datetime import datetime, UTC
+from redaction import redact_sensitive_text
 
 
 DISCORD_ENV_FILE_PATH = "/etc/minecraft-manager/discord.env"
@@ -129,18 +130,18 @@ def send_discord_notification(event_name, success=True, detail=""):
                 time.sleep(RETRY_DELAY_SECONDS * attempt)
                 continue
             if error_code is not None:
-                return False, f"Discord webhook HTTP error: {exc.code} ({error_message}, code={error_code})"
-            return False, f"Discord webhook HTTP error: {exc.code} ({error_message})"
+                return False, redact_sensitive_text(f"Discord webhook HTTP error: {exc.code} ({error_message}, code={error_code})")
+            return False, redact_sensitive_text(f"Discord webhook HTTP error: {exc.code} ({error_message})")
         except urllib.error.URLError as exc:
             if attempt < MAX_RETRIES:
                 time.sleep(RETRY_DELAY_SECONDS * attempt)
                 continue
-            return False, f"Discord webhook connection error: {exc.reason}"
+            return False, redact_sensitive_text(f"Discord webhook connection error: {exc.reason}")
         except Exception as exc:
             if attempt < MAX_RETRIES:
                 time.sleep(RETRY_DELAY_SECONDS * attempt)
                 continue
-            return False, f"Discord notification error: {exc}"
+            return False, redact_sensitive_text(f"Discord notification error: {exc}")
 
     return False, "Discord notification failed after retries"
 

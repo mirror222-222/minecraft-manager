@@ -5,6 +5,7 @@ import threading, time, os, json, subprocess, sys
 from collections import deque
 from datetime import datetime, UTC
 from mcstatus import JavaServer
+from actions.redaction import redact_sensitive_text
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 error_log = deque(maxlen=100)
@@ -12,10 +13,29 @@ IDLE_NOTICE_PATH = "/opt/minecraft/idle_shutdown_notice.json"
 
 def log_error(message, exc=None):
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
-    entry = f"[{timestamp}] {message}"
+    entry = f"[{timestamp}] {redact_sensitive_text(message)}"
     if exc is not None:
-        entry += f" | {type(exc).__name__}: {exc}"
+        entry += f" | {type(exc).__name__}: {redact_sensitive_text(exc)}"
     error_log.append(entry)
+
+
+def _safe_message(message):
+    return redact_sensitive_text(message)
+
+
+def _public_external_access_payload(external_access):
+    if not isinstance(external_access, dict):
+        return {
+            "configured": False,
+            "enabled": None,
+            "label": "External access status unavailable",
+        }
+
+    return {
+        "configured": external_access.get("configured", False),
+        "enabled": external_access.get("enabled", None),
+        "label": external_access.get("label", "External access status unavailable"),
+    }
 
 def get_connected_users():
     try:
@@ -34,14 +54,14 @@ def start_server():
             output = json.loads(result.stdout)
             logs = output.get("log", [])
             for log_entry in logs:
-                error_log.append(log_entry)
-            return output.get("success", False), output.get("message", "")
+                error_log.append(_safe_message(log_entry))
+            return output.get("success", False), _safe_message(output.get("message", ""))
         else:
             log_error(f"start_server.py failed: {result.stderr}")
-            return False, result.stderr
+            return False, _safe_message(result.stderr)
     except Exception as e:
         log_error("start_server exception", e)
-        return False, str(e)
+        return False, _safe_message(str(e))
 
 def stop_server():
     try:
@@ -52,13 +72,13 @@ def stop_server():
             message = output.get("message", "")
             if not success and message:
                 log_error(f"stop_server action failed: {message}")
-            return success, message
+            return success, _safe_message(message)
         else:
             log_error(f"stop_server.py failed: {result.stderr}")
-            return False, result.stderr
+            return False, _safe_message(result.stderr)
     except Exception as e:
         log_error("stop_server exception", e)
-        return False, str(e)
+        return False, _safe_message(str(e))
 
 
 def allow_external_access():
@@ -74,12 +94,12 @@ def allow_external_access():
             message = output.get("message", "")
             if not success and message:
                 log_error(f"allow_external_access action failed: {message}")
-            return success, message
+            return success, _safe_message(message)
         log_error(f"allow_external_access.py failed: {result.stderr}")
-        return False, result.stderr
+        return False, _safe_message(result.stderr)
     except Exception as e:
         log_error("allow_external_access exception", e)
-        return False, str(e)
+        return False, _safe_message(str(e))
 
 
 def disable_external_access():
@@ -95,12 +115,12 @@ def disable_external_access():
             message = output.get("message", "")
             if not success and message:
                 log_error(f"disable_external_access action failed: {message}")
-            return success, message
+            return success, _safe_message(message)
         log_error(f"disable_external_access.py failed: {result.stderr}")
-        return False, result.stderr
+        return False, _safe_message(result.stderr)
     except Exception as e:
         log_error("disable_external_access exception", e)
-        return False, str(e)
+        return False, _safe_message(str(e))
 
 
 def test_discord_notification():
@@ -116,12 +136,12 @@ def test_discord_notification():
             message = output.get("message", "")
             if not success and message:
                 log_error(f"test_discord_notification action failed: {message}")
-            return success, message
+            return success, _safe_message(message)
         log_error(f"test_discord_notification.py failed: {result.stderr}")
-        return False, result.stderr
+        return False, _safe_message(result.stderr)
     except Exception as e:
         log_error("test_discord_notification exception", e)
-        return False, str(e)
+        return False, _safe_message(str(e))
 
 
 def get_external_access_status():
@@ -144,13 +164,13 @@ def get_external_access_status():
 
         output = json.loads(result.stdout)
         if isinstance(output, dict):
-            return {
+            return _public_external_access_payload({
                 "configured": output.get("configured", False),
                 "enabled": output.get("enabled", None),
                 "label": output.get("label", default_status["label"]),
                 "message": output.get("message", default_status["message"]),
-            }
-        return default_status
+            })
+        return _public_external_access_payload(default_status)
     except Exception as e:
         log_error("get_external_access_status exception", e)
         return default_status
@@ -165,10 +185,10 @@ def update_whitelist(data):
             return output.get("success", False), output.get("message", "")
         else:
             log_error(f"update_whitelist.py failed: {result.stderr}")
-            return False, result.stderr
+            return False, _safe_message(result.stderr)
     except Exception as e:
         log_error("update_whitelist exception", e)
-        return False, str(e)
+        return False, _safe_message(str(e))
 
 def get_whitelist_json():
     whitelist_path = "/opt/minecraft/whitelist.json"
