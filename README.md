@@ -24,6 +24,7 @@ curl -fsSL https://raw.githubusercontent.com/mirror222-222/minecraft-manager/mai
 
 Then update:
 - `/etc/minecraft-manager/opnsense.env`
+- `/etc/minecraft-manager/discord.env`
 
 This installs:
 - App code in `/opt/minecraftmanager`
@@ -42,6 +43,7 @@ This installs:
 - Start/stop Minecraft server from a web UI
 - Manual "Allow External Access" action that enables a configured OPNsense firewall rule only after Minecraft is reachable
 - External access status indicator in the web UI (enabled / disabled / unavailable)
+- Discord notifications for server start/stop and firewall enable/disable events
 - Edit and apply `whitelist.json` from the web UI
 - Auto-stop server after 30 minutes with 0 connected players
 - Show inactivity shutdown notice in the web UI
@@ -114,6 +116,43 @@ Workflow:
 2. Wait for server readiness.
 3. Click **Allow External Access** in the web UI.
 4. When server is stopped (manual or idle timeout), firewall rule is disabled automatically.
+
+## 6.2) Discord Webhook Notifications
+
+Discord webhook settings are loaded from a root-only environment file:
+
+- `/etc/minecraft-manager/discord.env`
+
+Required variable:
+
+```sh
+DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+```
+
+Optional variables:
+
+```sh
+DISCORD_WEBHOOK_USERNAME="Minecraft Manager"
+DISCORD_WEBHOOK_AVATAR_URL="https://example.com/icon.png"
+DISCORD_MENTION="@here"
+DISCORD_VERIFY_TLS="0"
+```
+
+After editing the Discord env file:
+
+```sh
+sudo systemctl daemon-reload
+sudo systemctl restart minecraft-manager
+sudo systemctl restart minecraft-idle-monitor
+```
+
+Notifications are sent for:
+
+- Minecraft server start and stop actions
+- Firewall rule enable and disable actions
+- Idle-timeout automatic stop events
+
+To verify webhook configuration from the web UI, click **Send Test Discord Message**.
 
 ## 7) Troubleshooting
 

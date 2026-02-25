@@ -34,6 +34,9 @@
     <form id="disable-form" method="post" action="/disable-external-access" {% if external_access.enabled != true %}style="display:none;"{% endif %}>
         <button type="submit">Disable External Access</button>
     </form>
+    <form method="post" action="/test-discord">
+        <button type="submit">Send Test Discord Message</button>
+    </form>
     <h2>Edit Whitelist</h2>
     <form method="post" action="/whitelist">
         <textarea name="whitelistBox" rows="10" cols="60">{{ whitelist_json }}</textarea><br>

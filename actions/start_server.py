@@ -4,6 +4,11 @@ import datetime
 import time
 import json
 
+try:
+    from discord_notify import send_discord_notification
+except ModuleNotFoundError:
+    from actions.discord_notify import send_discord_notification
+
 
 log_messages = []
 IDLE_NOTICE_PATH = "/opt/minecraft/idle_shutdown_notice.json"
@@ -105,6 +110,13 @@ def start_server():
                 msg = f"Failed to start server: {start.stderr}"
                 log_error(msg)
                 log_messages.append(f"[ERROR] {msg}")
+                discord_ok, discord_msg = send_discord_notification(
+                    "Minecraft server start",
+                    success=False,
+                    detail=msg,
+                )
+                if not discord_ok:
+                    log_messages.append(f"[WARN] Discord notification failed: {discord_msg}")
                 return False, msg
             clear_idle_shutdown_notice()
             # Get server IP and port from server.properties
@@ -123,11 +135,25 @@ def start_server():
             # Stub: user count (real implementation would parse logs or query server)
             user_count = 0
             log_messages.append(f"[INFO] Users online: {user_count}")
+            discord_ok, discord_msg = send_discord_notification(
+                "Minecraft server started",
+                success=True,
+                detail=f"Listening on {server_ip}:{server_port}",
+            )
+            if not discord_ok:
+                log_messages.append(f"[WARN] Discord notification failed: {discord_msg}")
             return True, f"Server started (systemd service) at {server_ip}:{server_port} with {user_count} users online"
         except Exception as e:
             msg = f"Failed to start server: {e}"
             log_error(msg)
             log_messages.append(f"[ERROR] {msg}")
+            discord_ok, discord_msg = send_discord_notification(
+                "Minecraft server start",
+                success=False,
+                detail=msg,
+            )
+            if not discord_ok:
+                log_messages.append(f"[WARN] Discord notification failed: {discord_msg}")
             return False, msg
     except Exception as e:
         log_error("start_server exception", e)

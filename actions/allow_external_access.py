@@ -3,7 +3,12 @@ import os
 
 from mcstatus import JavaServer
 
-from opnsense_firewall import enable_rule
+try:
+    from discord_notify import send_discord_notification
+    from opnsense_firewall import enable_rule
+except ModuleNotFoundError:
+    from actions.discord_notify import send_discord_notification
+    from actions.opnsense_firewall import enable_rule
 
 
 def _read_server_target():
@@ -50,11 +55,27 @@ def _minecraft_is_reachable():
 
 def allow_external_access():
     if not _minecraft_is_reachable():
+        send_discord_notification(
+            "Firewall enable",
+            success=False,
+            detail="Minecraft server not reachable yet",
+        )
         return False, "Minecraft server is not yet reachable. Start the server and wait until it is fully up before enabling external access."
 
     success, message = enable_rule()
     if not success:
+        send_discord_notification(
+            "Firewall enable",
+            success=False,
+            detail=message,
+        )
         return False, message
+
+    send_discord_notification(
+        "Firewall rule enabled",
+        success=True,
+        detail="External access allowed",
+    )
 
     return True, "External access enabled on OPNsense firewall rule"
 

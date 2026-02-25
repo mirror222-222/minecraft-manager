@@ -6,6 +6,7 @@ After=network.target
 Type=simple
 WorkingDirectory=/opt/minecraftmanager
 EnvironmentFile=-/etc/minecraft-manager/opnsense.env
+EnvironmentFile=-/etc/minecraft-manager/discord.env
 ExecStart=/opt/minecraftmanager/.venv/bin/python /opt/minecraftmanager/main.py
 Restart=always
 RestartSec=5

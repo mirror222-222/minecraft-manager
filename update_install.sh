@@ -138,6 +138,22 @@ fi
 chown root:root /etc/minecraft-manager/opnsense.env
 chmod 600 /etc/minecraft-manager/opnsense.env
 
+# Prepare Discord webhook environment file (root-only)
+if [ ! -f /etc/minecraft-manager/discord.env ]; then
+    cat > /etc/minecraft-manager/discord.env << 'EOF'
+# Discord webhook configuration
+# DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+# Optional
+# DISCORD_WEBHOOK_USERNAME="Minecraft Manager"
+# DISCORD_WEBHOOK_AVATAR_URL="https://example.com/icon.png"
+# DISCORD_MENTION="@here"
+# Optional: set to 1 to verify TLS certificates (default is 0)
+# DISCORD_VERIFY_TLS="0"
+EOF
+fi
+chown root:root /etc/minecraft-manager/discord.env
+chmod 600 /etc/minecraft-manager/discord.env
+
 # Ensure server files owned by minecraft user
 chown -R minecraft:minecraft "$SERVER_DIR"
 

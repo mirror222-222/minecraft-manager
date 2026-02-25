@@ -4,6 +4,11 @@ import os
 import sys
 from datetime import datetime
 
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+if CURRENT_DIR not in sys.path:
+    sys.path.insert(0, CURRENT_DIR)
+
+from discord_notify import send_discord_notification
 from opnsense_firewall import disable_rule
 
 IDLE_NOTICE_PATH = "/opt/minecraft/idle_shutdown_notice.json"
@@ -33,10 +38,26 @@ def stop_server():
             errors.append(f"Failed to disable OPNsense firewall rule: {disable_msg}")
 
         if errors:
+            send_discord_notification(
+                "Minecraft server stop",
+                success=False,
+                detail=" | ".join(errors),
+            )
             return False, " | ".join(errors)
+
+        send_discord_notification(
+            "Minecraft server stopped",
+            success=True,
+            detail="Firewall rule disabled",
+        )
         return True, "Server stopped and firewall rule disabled"
     except Exception as e:
         log_error("stop_server exception", e)
+        send_discord_notification(
+            "Minecraft server stop",
+            success=False,
+            detail=str(e),
+        )
         return False, str(e)
 
 if __name__ == "__main__":

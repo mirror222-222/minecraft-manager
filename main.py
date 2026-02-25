@@ -103,6 +103,27 @@ def disable_external_access():
         return False, str(e)
 
 
+def test_discord_notification():
+    try:
+        result = subprocess.run(
+            [sys.executable, os.path.abspath("actions/test_discord_notification.py")],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            output = json.loads(result.stdout)
+            success = output.get("success", False)
+            message = output.get("message", "")
+            if not success and message:
+                log_error(f"test_discord_notification action failed: {message}")
+            return success, message
+        log_error(f"test_discord_notification.py failed: {result.stderr}")
+        return False, result.stderr
+    except Exception as e:
+        log_error("test_discord_notification exception", e)
+        return False, str(e)
+
+
 def get_external_access_status():
     default_status = {
         "configured": False,
@@ -229,6 +250,12 @@ def allow_external_access_route():
 @app.route("/disable-external-access", methods=["POST"])
 def disable_external_access_route():
     success, msg = disable_external_access()
+    return redirect(url_for("index"))
+
+
+@app.route("/test-discord", methods=["POST"])
+def test_discord_route():
+    success, msg = test_discord_notification()
     return redirect(url_for("index"))
 
 @app.route("/whitelist", methods=["POST"])

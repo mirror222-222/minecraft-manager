@@ -4,7 +4,13 @@ import time
 from datetime import datetime, UTC
 
 from mcstatus import JavaServer
-from opnsense_firewall import disable_rule
+
+try:
+    from discord_notify import send_discord_notification
+    from opnsense_firewall import disable_rule
+except ModuleNotFoundError:
+    from actions.discord_notify import send_discord_notification
+    from actions.opnsense_firewall import disable_rule
 
 CHECK_INTERVAL_SECONDS = 60
 IDLE_TIMEOUT_MINUTES = 30
@@ -72,6 +78,8 @@ def get_online_players(host: str, port: int) -> int | None:
 
 def stop_minecraft_server() -> bool:
     failed = False
+    stop_failed = False
+    firewall_failed = False
 
     result = subprocess.run(
         ["systemctl", "stop", MINECRAFT_SERVICE_NAME],
@@ -81,11 +89,31 @@ def stop_minecraft_server() -> bool:
     if result.returncode != 0:
         log(f"Failed to stop minecraft service: {result.stderr.strip()}")
         failed = True
+        stop_failed = True
 
     disable_ok, disable_message = disable_rule()
     if not disable_ok:
         log(f"Failed to disable OPNsense firewall rule: {disable_message}")
         failed = True
+        firewall_failed = True
+
+    if failed:
+        detail_parts = []
+        if stop_failed:
+            detail_parts.append("Minecraft service stop failed")
+        if firewall_failed:
+            detail_parts.append("Firewall rule disable failed")
+        send_discord_notification(
+            "Idle timeout stop",
+            success=False,
+            detail=" | ".join(detail_parts),
+        )
+    else:
+        send_discord_notification(
+            "Minecraft server stopped (idle timeout)",
+            success=True,
+            detail="Firewall rule disabled",
+        )
 
     return not failed
 
