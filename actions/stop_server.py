@@ -1,6 +1,7 @@
 import subprocess
 import json
 import os
+import sys
 from datetime import datetime
 
 from opnsense_firewall import disable_rule
@@ -12,7 +13,7 @@ def log_error(message, exc=None):
     entry = f"[{timestamp}] {message}"
     if exc is not None:
         entry += f" | {type(exc).__name__}: {exc}"
-    print(entry)
+    print(entry, file=sys.stderr)
 
 def stop_server():
     errors = []

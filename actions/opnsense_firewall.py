@@ -6,11 +6,59 @@ import urllib.error
 import urllib.request
 
 
+ENV_FILE_PATH = "/etc/minecraft-manager/opnsense.env"
+
+
+def _strip_wrapping_quotes(value):
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"\"", "'"}:
+        return value[1:-1]
+    return value
+
+
+def _read_env_file(path):
+    env_values = {}
+    if not os.path.exists(path):
+        return env_values
+
+    try:
+        with open(path, "r", encoding="utf-8") as env_file:
+            for raw_line in env_file:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+
+                key, value = line.split("=", 1)
+                key = key.strip()
+                if not key:
+                    continue
+
+                env_values[key] = _strip_wrapping_quotes(value)
+    except Exception:
+        return {}
+
+    return env_values
+
+
+def _get_config_value(name, file_values):
+    value = os.getenv(name)
+    if value is not None and value.strip() != "":
+        return value.strip()
+
+    file_value = file_values.get(name)
+    if file_value is None:
+        return ""
+
+    return file_value.strip()
+
+
 def load_opnsense_config():
-    url = os.getenv("OPNSENSE_URL", "").strip().rstrip("/")
-    api_key = os.getenv("OPNSENSE_API_KEY", "").strip()
-    api_secret = os.getenv("OPNSENSE_API_SECRET", "").strip()
-    rule_uuid = os.getenv("OPNSENSE_RULE_UUID", "").strip()
+    env_file_values = _read_env_file(ENV_FILE_PATH)
+
+    url = _get_config_value("OPNSENSE_URL", env_file_values).rstrip("/")
+    api_key = _get_config_value("OPNSENSE_API_KEY", env_file_values)
+    api_secret = _get_config_value("OPNSENSE_API_SECRET", env_file_values)
+    rule_uuid = _get_config_value("OPNSENSE_RULE_UUID", env_file_values)
 
     missing = []
     if not url:
@@ -25,7 +73,7 @@ def load_opnsense_config():
     if missing:
         return None, f"Missing required OPNsense environment variables: {', '.join(missing)}"
 
-    verify_tls = os.getenv("OPNSENSE_VERIFY_TLS", "0").strip().lower() in {
+    verify_tls = _get_config_value("OPNSENSE_VERIFY_TLS", env_file_values).lower() in {
         "1",
         "true",
         "yes",

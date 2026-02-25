@@ -48,7 +48,11 @@ def stop_server():
         result = subprocess.run([sys.executable, os.path.abspath("actions/stop_server.py")], capture_output=True, text=True)
         if result.returncode == 0:
             output = json.loads(result.stdout)
-            return output.get("success", False), output.get("message", "")
+            success = output.get("success", False)
+            message = output.get("message", "")
+            if not success and message:
+                log_error(f"stop_server action failed: {message}")
+            return success, message
         else:
             log_error(f"stop_server.py failed: {result.stderr}")
             return False, result.stderr
@@ -66,11 +70,36 @@ def allow_external_access():
         )
         if result.returncode == 0:
             output = json.loads(result.stdout)
-            return output.get("success", False), output.get("message", "")
+            success = output.get("success", False)
+            message = output.get("message", "")
+            if not success and message:
+                log_error(f"allow_external_access action failed: {message}")
+            return success, message
         log_error(f"allow_external_access.py failed: {result.stderr}")
         return False, result.stderr
     except Exception as e:
         log_error("allow_external_access exception", e)
+        return False, str(e)
+
+
+def disable_external_access():
+    try:
+        result = subprocess.run(
+            [sys.executable, os.path.abspath("actions/disable_external_access.py")],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            output = json.loads(result.stdout)
+            success = output.get("success", False)
+            message = output.get("message", "")
+            if not success and message:
+                log_error(f"disable_external_access action failed: {message}")
+            return success, message
+        log_error(f"disable_external_access.py failed: {result.stderr}")
+        return False, result.stderr
+    except Exception as e:
+        log_error("disable_external_access exception", e)
         return False, str(e)
 
 
@@ -196,6 +225,12 @@ def allow_external_access_route():
     success, msg = allow_external_access()
     return redirect(url_for("index"))
 
+
+@app.route("/disable-external-access", methods=["POST"])
+def disable_external_access_route():
+    success, msg = disable_external_access()
+    return redirect(url_for("index"))
+
 @app.route("/whitelist", methods=["POST"])
 def whitelist():
     try:
@@ -224,7 +259,16 @@ def favicon():
 @app.route("/status")
 def status():
     status_message, status_error, server_running = get_status_message()
-    return jsonify({"running": server_running, "users": get_connected_users()})
+    external_access = get_external_access_status()
+    return jsonify(
+        {
+            "running": server_running,
+            "users": get_connected_users(),
+            "status_message": status_message,
+            "status_error": status_error,
+            "external_access": external_access,
+        }
+    )
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

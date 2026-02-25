@@ -17,18 +17,23 @@
     {% else %}
     <div id="external-access-status">{{ external_access.label }}</div>
     {% endif %}
-    {% if server_running %}
-        <form method="post" action="/stop">
-            <button type="submit" class="btn-stop">Stop Minecraft</button>
-        </form>
-        <form method="post" action="/allow-external-access">
-            <button type="submit">Allow External Access</button>
-        </form>
-    {% else %}
-        <form method="post" action="/start">
-            <button type="submit" class="btn-start">Start Minecraft</button>
-        </form>
-    {% endif %}
+    <form id="start-form" method="post" action="/start" {% if server_running %}style="display:none;"{% endif %}>
+        <button type="submit" class="btn-start">Start Minecraft</button>
+    </form>
+    <form id="stop-form" method="post" action="/stop" {% if not server_running %}style="display:none;"{% endif %}>
+        <button type="submit" class="btn-stop">Stop Minecraft</button>
+    </form>
+
+    <form id="allow-form" method="post" action="/allow-external-access" {% if external_access.enabled == true %}style="display:none;"{% endif %}>
+        <button
+            id="allow-button"
+            type="submit"
+            {% if not server_running %}disabled title="Start Minecraft first to enable external access"{% endif %}
+        >Allow External Access</button>
+    </form>
+    <form id="disable-form" method="post" action="/disable-external-access" {% if external_access.enabled != true %}style="display:none;"{% endif %}>
+        <button type="submit">Disable External Access</button>
+    </form>
     <h2>Edit Whitelist</h2>
     <form method="post" action="/whitelist">
         <textarea name="whitelistBox" rows="10" cols="60">{{ whitelist_json }}</textarea><br>
@@ -45,5 +50,80 @@
     <form method="post" action="/errors/clear">
         <button type="submit">Clear Errors</button>
     </form>
+
+    <script>
+        function applyExternalAccessStatus(externalAccess) {
+            const externalStatus = document.getElementById("external-access-status");
+            const allowForm = document.getElementById("allow-form");
+            const disableForm = document.getElementById("disable-form");
+
+            if (externalStatus && externalAccess) {
+                externalStatus.textContent = externalAccess.label || "External access status unavailable";
+                externalStatus.className = "";
+
+                if (externalAccess.enabled === true) {
+                    externalStatus.classList.add("status-success");
+                } else if (externalAccess.enabled === false) {
+                    externalStatus.classList.add("status-error");
+                }
+            }
+
+            if (allowForm && disableForm && externalAccess) {
+                if (externalAccess.enabled === true) {
+                    allowForm.style.display = "none";
+                    disableForm.style.display = "";
+                } else {
+                    allowForm.style.display = "";
+                    disableForm.style.display = "none";
+                }
+            }
+        }
+
+        function applyServerStatus(payload) {
+            const statusDiv = document.getElementById("status");
+            const startForm = document.getElementById("start-form");
+            const stopForm = document.getElementById("stop-form");
+            const allowButton = document.getElementById("allow-button");
+
+            if (statusDiv) {
+                statusDiv.textContent = payload.status_message || "";
+                statusDiv.className = payload.status_error ? "status-error" : "status-success";
+            }
+
+            if (startForm && stopForm) {
+                if (payload.running) {
+                    startForm.style.display = "none";
+                    stopForm.style.display = "";
+                } else {
+                    startForm.style.display = "";
+                    stopForm.style.display = "none";
+                }
+            }
+
+            if (allowButton) {
+                allowButton.disabled = !payload.running;
+                if (!payload.running) {
+                    allowButton.title = "Start Minecraft first to enable external access";
+                } else {
+                    allowButton.removeAttribute("title");
+                }
+            }
+        }
+
+        async function pollStatus() {
+            try {
+                const response = await fetch("/status", { cache: "no-store" });
+                if (!response.ok) {
+                    return;
+                }
+                const payload = await response.json();
+                applyServerStatus(payload);
+                applyExternalAccessStatus(payload.external_access);
+            } catch (error) {
+            }
+        }
+
+        setInterval(pollStatus, 10000);
+    </script>
 </body>
 </html>
