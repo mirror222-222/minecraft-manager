@@ -116,6 +116,25 @@ def send_discord_notification(event_name, success=True, detail=""):
         with urllib.request.urlopen(request, context=ssl_context, timeout=15):
             return True, "Discord notification sent"
     except urllib.error.HTTPError as exc:
+        response_body = ""
+        try:
+            response_body = exc.read().decode("utf-8", errors="replace").strip()
+        except Exception:
+            response_body = ""
+
+        if response_body:
+            try:
+                payload = json.loads(response_body)
+                message = payload.get("message")
+                error_code = payload.get("code")
+                if message and error_code is not None:
+                    return False, f"Discord webhook HTTP error: {exc.code} ({message}, code={error_code})"
+                if message:
+                    return False, f"Discord webhook HTTP error: {exc.code} ({message})"
+            except Exception:
+                pass
+            return False, f"Discord webhook HTTP error: {exc.code} ({response_body})"
+
         return False, f"Discord webhook HTTP error: {exc.code}"
     except urllib.error.URLError as exc:
         return False, f"Discord webhook connection error: {exc.reason}"
