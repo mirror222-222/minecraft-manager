@@ -112,9 +112,10 @@ chmod 600 /etc/minecraft-manager/opnsense.env
 # Ensure server files owned by minecraft user
 chown -R minecraft:minecraft "$SERVER_DIR"
 
-# Enable services (start web manager now)
+# Configure service startup behavior
 systemctl daemon-reload
-systemctl enable minecraft
+systemctl disable minecraft
+echo "minecraft.service autostart disabled (manual start only)."
 systemctl enable --now minecraft-manager
 systemctl enable --now minecraft-idle-monitor
 

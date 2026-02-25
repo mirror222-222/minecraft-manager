@@ -41,8 +41,8 @@ This installs:
 The installer configures these systemd services:
 
 - `minecraft.service` (Minecraft Java server)
-  - Enabled at boot
-  - Not auto-started during install
+  - Disabled at boot
+  - Started only by explicit user action (web UI Start button or manual systemctl start)
 - `minecraft-manager.service` (Flask web UI)
   - Enabled and started immediately during install (`enable --now`)
 - `minecraft-idle-monitor.service` (inactivity monitor)
