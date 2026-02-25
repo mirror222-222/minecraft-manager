@@ -1,21 +1,27 @@
 #!/bin/bash
 # update_install.sh - Simple script to update or install this project from its git repository
 
+apply_mc_memory_settings() {
+    local unit_file="$1"
+    if [ ! -f "$unit_file" ]; then
+        echo "minecraft.service not found at $unit_file; skipping JVM memory update."
+        return
+    fi
+
+    sed -i "s/-Xmx[0-9]*M/-Xmx${MC_RAM_MB}M/" "$unit_file"
+    sed -i "s/-Xms[0-9]*M/-Xms${MC_RAM_MB}M/" "$unit_file"
+    echo "minecraft.service updated at $unit_file with -Xmx${MC_RAM_MB}M and -Xms${MC_RAM_MB}M"
+}
+
 # Detect total RAM and optimize Minecraft JVM memory allocation
 TOTAL_RAM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
 # Allocate 75% to Minecraft, max 12288MB (12GB)
 MC_RAM_MB=$(( TOTAL_RAM_MB * 75 / 100 ))
-[ $MC_RAM_MB -gt 12288 ] && MC_RAM_MB=12288
-
-# Update minecraft.service JVM memory settings
-if [ -f minecraft.service ]; then
-    sed -i "s/-Xmx[0-9]*M/-Xmx${MC_RAM_MB}M/" minecraft.service
-    sed -i "s/-Xms[0-9]*M/-Xms${MC_RAM_MB}M/" minecraft.service
-    echo "minecraft.service updated with -Xmx${MC_RAM_MB}M and -Xms${MC_RAM_MB}M"
-fi
+[ "$MC_RAM_MB" -gt 12288 ] && MC_RAM_MB=12288
+echo "Detected RAM: ${TOTAL_RAM_MB}MB total; setting Minecraft heap to ${MC_RAM_MB}MB."
 
 # Install prerequisites: curl, python3, python3-venv, default-jre-headless
-echo "Installing prerequisites: curl, python3, python3-venv, default-jre-headless..."
+echo "Installing prerequisites: curl, python3, python3-venv, default-jre-headless, git, unattended-upgrades..."
 apt update && apt upgrade -y
 apt install -y curl python3 python3-venv default-jre-headless git unattended-upgrades
 
@@ -69,6 +75,10 @@ else
 fi
 
 
+# Update repository minecraft.service JVM memory settings after code is present in APP_DIR
+apply_mc_memory_settings "$APP_DIR/minecraft.service"
+
+
 # No need to move files; repo is now structured with main.py and hello.sh at the root.
 
 
@@ -98,6 +108,9 @@ fi
 cp "$APP_DIR/minecraft.service" /etc/systemd/system/minecraft.service
 chown root:root /etc/systemd/system/minecraft.service
 chmod 644 /etc/systemd/system/minecraft.service
+
+# Ensure installed unit has expected JVM memory values
+apply_mc_memory_settings "/etc/systemd/system/minecraft.service"
 
 # Copy web manager systemd unit file
 cp "$APP_DIR/minecraft-manager.service" /etc/systemd/system/minecraft-manager.service
