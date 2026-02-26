@@ -10,6 +10,7 @@ if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
 from discord_notify import send_discord_notification
+from redaction import redact_sensitive_text
 
 
 log_messages = []
@@ -17,9 +18,9 @@ IDLE_NOTICE_PATH = "/opt/minecraft/idle_shutdown_notice.json"
 from datetime import datetime, UTC
 def log_error(message, exc=None):
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
-    entry = f"[{timestamp}] {message}"
+    entry = f"[{timestamp}] {redact_sensitive_text(message)}"
     if exc is not None:
-        entry += f" | {type(exc).__name__}: {exc}"
+        entry += f" | {type(exc).__name__}: {redact_sensitive_text(exc)}"
     log_messages.append(entry)
 
 
@@ -207,4 +208,5 @@ def start_server():
 
 if __name__ == "__main__":
     success, msg = start_server()
-    print(json.dumps({"success": success, "message": msg, "log": log_messages}))
+    safe_log_messages = [redact_sensitive_text(entry) for entry in log_messages]
+    print(json.dumps({"success": success, "message": redact_sensitive_text(msg), "log": safe_log_messages}))

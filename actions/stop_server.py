@@ -52,7 +52,6 @@ def stop_server():
             return False, redacted_errors
 
         send_discord_notification(
-        redacted_error = redact_sensitive_text(str(e))
             "Minecraft server stopped",
             success=True,
             detail="Firewall rule disabled",
@@ -60,6 +59,7 @@ def stop_server():
         return True, "Server stopped and firewall rule disabled"
     except Exception as e:
         log_error("stop_server exception", e)
+        redacted_error = redact_sensitive_text(str(e))
         send_discord_notification(
             "Minecraft server stop",
             success=False,

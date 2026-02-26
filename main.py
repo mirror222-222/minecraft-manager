@@ -182,7 +182,7 @@ def update_whitelist(data):
         ], capture_output=True, text=True)
         if result.returncode == 0:
             output = json.loads(result.stdout)
-            return output.get("success", False), output.get("message", "")
+            return output.get("success", False), _safe_message(output.get("message", ""))
         else:
             log_error(f"update_whitelist.py failed: {result.stderr}")
             return False, _safe_message(result.stderr)

@@ -93,7 +93,8 @@ def send_discord_notification(event_name, success=True, detail=""):
     if config_error:
         return False, config_error
 
-    content = _build_message(event_name=event_name, success=success, detail=detail)
+    safe_detail = redact_sensitive_text(detail)
+    content = _build_message(event_name=event_name, success=success, detail=safe_detail)
     if config["mention"]:
         content = f"{config['mention']}\n{content}"
 
