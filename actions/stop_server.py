@@ -10,14 +10,17 @@ if CURRENT_DIR not in sys.path:
 
 from discord_notify import send_discord_notification
 from opnsense_firewall import disable_rule
+from redaction import redact_sensitive_text
 
 IDLE_NOTICE_PATH = "/opt/minecraft/idle_shutdown_notice.json"
 
 def log_error(message, exc=None):
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-    entry = f"[{timestamp}] {message}"
+    redacted_message = redact_sensitive_text(str(message))
+    entry = f"[{timestamp}] {redacted_message}"
     if exc is not None:
-        entry += f" | {type(exc).__name__}: {exc}"
+        redacted_exc = redact_sensitive_text(str(exc))
+        entry += f" | {type(exc).__name__}: {redacted_exc}"
     print(entry, file=sys.stderr)
 
 def stop_server():
