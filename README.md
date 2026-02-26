@@ -14,7 +14,7 @@ If you have a dedicated system, all you need is a minimal Debian install. Run th
 
 ## 1) Purpose
 
-Minecraft Manager provides a web UI and automation for operating a Minecraft Java server on Linux.
+Minecraft Manager provides a web UI and automation for operating a Minecraft Java server on Linux. Only Expose Minecraft server port, DO NOT EXPOSE the Web interface.
 
 ## 2) Quick Install (Target Host)
 
@@ -243,3 +243,4 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python main.py
 ```
+
