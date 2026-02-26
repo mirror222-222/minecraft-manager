@@ -82,4 +82,4 @@ def allow_external_access():
 
 if __name__ == "__main__":
     success, message = allow_external_access()
-    print(json.dumps({"success": success, "message": message}))
+    print(json.dumps({"success": success}))
