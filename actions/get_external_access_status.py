@@ -1,6 +1,7 @@
 import json
 
 from opnsense_firewall import get_rule_enabled
+from redaction import redact_sensitive_text
 
 
 def get_external_access_status():
@@ -10,7 +11,7 @@ def get_external_access_status():
             "configured": False,
             "enabled": None,
             "label": "External access status unavailable",
-            "message": error,
+            "message": redact_sensitive_text(error),
         }
 
     if enabled:
