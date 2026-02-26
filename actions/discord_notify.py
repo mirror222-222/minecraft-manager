@@ -126,23 +126,20 @@ def send_discord_notification(event_name, success=True, detail=""):
             with urllib.request.urlopen(request, context=ssl_context, timeout=15):
                 return True, "Discord notification sent"
         except urllib.error.HTTPError as exc:
-            error_message, error_code = _parse_http_error(exc)
             if exc.code in {429, 500, 502, 503, 504} and attempt < MAX_RETRIES:
                 time.sleep(RETRY_DELAY_SECONDS * attempt)
                 continue
-            if error_code is not None:
-                return False, redact_sensitive_text(f"Discord webhook HTTP error: {exc.code} ({error_message}, code={error_code})")
-            return False, redact_sensitive_text(f"Discord webhook HTTP error: {exc.code} ({error_message})")
-        except urllib.error.URLError as exc:
+            return False, f"Discord webhook HTTP error: {exc.code}"
+        except urllib.error.URLError:
             if attempt < MAX_RETRIES:
                 time.sleep(RETRY_DELAY_SECONDS * attempt)
                 continue
-            return False, redact_sensitive_text(f"Discord webhook connection error: {exc.reason}")
-        except Exception as exc:
+            return False, "Discord webhook connection error"
+        except Exception:
             if attempt < MAX_RETRIES:
                 time.sleep(RETRY_DELAY_SECONDS * attempt)
                 continue
-            return False, redact_sensitive_text(f"Discord notification error: {exc}")
+            return False, "Discord notification error"
 
     return False, "Discord notification failed after retries"
 

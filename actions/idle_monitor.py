@@ -52,8 +52,8 @@ def read_server_target() -> tuple[str, int]:
                         log(f"Invalid server-port in server.properties: {value}")
                 elif key == "server-ip" and value:
                     host = value
-    except Exception as exc:
-        log(f"Failed to parse server.properties: {exc}")
+    except Exception:
+        log("Failed to parse server.properties")
 
     return host, port
 
@@ -72,8 +72,8 @@ def get_online_players(host: str, port: int) -> int | None:
         server = JavaServer.lookup(f"{host}:{port}")
         status = server.status()
         return status.players.online
-    except Exception as exc:
-        log(f"Failed to query online player count: {exc}")
+    except Exception:
+        log("Failed to query online player count")
         return None
 
 
@@ -88,7 +88,7 @@ def stop_minecraft_server() -> bool:
         text=True,
     )
     if result.returncode != 0:
-        log(f"Failed to stop minecraft service: {result.stderr.strip()}")
+        log(f"Failed to stop minecraft service (exit code {result.returncode})")
         failed = True
         stop_failed = True
 
@@ -130,8 +130,8 @@ def write_idle_shutdown_notice() -> None:
             import json
 
             json.dump(payload, notice_file)
-    except Exception as exc:
-        log(f"Failed to write idle shutdown notice: {exc}")
+    except Exception:
+        log("Failed to write idle shutdown notice")
 
 
 def main() -> None:

@@ -20,7 +20,7 @@ def log_error(message, exc=None):
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     entry = f"[{timestamp}] {redact_sensitive_text(message)}"
     if exc is not None:
-        entry += f" | {type(exc).__name__}: {redact_sensitive_text(exc)}"
+        entry += f" | {type(exc).__name__}"
     log_messages.append(entry)
 
 
@@ -116,7 +116,7 @@ def start_server():
             version_json = json.loads(version_data)
             url = version_json["downloads"]["server"]["url"]
         except Exception as e:
-            msg = f"Failed to fetch latest server JAR URL: {e}"
+            msg = "Failed to fetch latest server JAR URL"
             log_error(msg)
             return False, msg
 
@@ -138,7 +138,7 @@ def start_server():
             log_messages.append(f"[INFO] Downloading Minecraft server {latest_release}...")
             dl = subprocess.run(["wget", "-O", server_jar, url], capture_output=True, text=True)
             if dl.returncode != 0:
-                msg = f"Download failed: {dl.stderr}"
+                msg = f"Download failed (exit code {dl.returncode})"
                 log_error(msg)
                 return False, msg
             with open(version_file, "w") as vf:
@@ -154,7 +154,7 @@ def start_server():
         try:
             start = subprocess.run(["systemctl", "start", "minecraft"], capture_output=True, text=True)
             if start.returncode != 0:
-                msg = f"Failed to start server: {start.stderr}"
+                msg = f"Failed to start server (exit code {start.returncode})"
                 log_error(msg)
                 log_messages.append(f"[ERROR] {msg}")
                 discord_ok, discord_msg = send_discord_notification(
@@ -191,7 +191,7 @@ def start_server():
                 log_messages.append(f"[WARN] Discord notification failed: {discord_msg}")
             return True, f"Server started (systemd service) at {server_ip}:{server_port} with {user_count} users online"
         except Exception as e:
-            msg = f"Failed to start server: {e}"
+            msg = "Failed to start server"
             log_error(msg)
             log_messages.append(f"[ERROR] {msg}")
             discord_ok, discord_msg = send_discord_notification(
@@ -204,7 +204,7 @@ def start_server():
             return False, msg
     except Exception as e:
         log_error("start_server exception", e)
-        return False, str(e)
+        return False, "Unexpected error while starting server"
 
 if __name__ == "__main__":
     success, msg = start_server()

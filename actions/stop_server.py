@@ -19,8 +19,7 @@ def log_error(message, exc=None):
     redacted_message = redact_sensitive_text(str(message))
     entry = f"[{timestamp}] {redacted_message}"
     if exc is not None:
-        redacted_exc = redact_sensitive_text(str(exc))
-        entry += f" | {type(exc).__name__}: {redacted_exc}"
+        entry += f" | {type(exc).__name__}"
     print(entry, file=sys.stderr)
 
 def stop_server():
@@ -31,7 +30,7 @@ def stop_server():
 
         stop = subprocess.run(["systemctl", "stop", "minecraft"], capture_output=True, text=True)
         if stop.returncode != 0:
-            msg = f"Failed to stop server: {stop.stderr}"
+            msg = f"Failed to stop server (exit code {stop.returncode})"
             log_error(msg)
             errors.append(msg)
 
@@ -59,7 +58,7 @@ def stop_server():
         return True, "Server stopped and firewall rule disabled"
     except Exception as e:
         log_error("stop_server exception", e)
-        redacted_error = redact_sensitive_text(str(e))
+        redacted_error = "Unexpected error while stopping server"
         send_discord_notification(
             "Minecraft server stop",
             success=False,

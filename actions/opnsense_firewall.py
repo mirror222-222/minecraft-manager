@@ -131,14 +131,14 @@ def _opnsense_request(config, path, payload=None):
         try:
             error_body = exc.read().decode("utf-8", errors="replace")
             if error_body:
-                return False, redact_sensitive_text(f"HTTP {exc.code} from OPNsense API: {error_body}")
+                return False, f"HTTP {exc.code} from OPNsense API"
         except Exception:
             pass
         return False, f"HTTP {exc.code} from OPNsense API"
-    except urllib.error.URLError as exc:
-        return False, redact_sensitive_text(f"Failed to reach OPNsense API: {exc.reason}")
-    except Exception as exc:
-        return False, redact_sensitive_text(f"Unexpected OPNsense API error: {exc}")
+    except urllib.error.URLError:
+        return False, "Failed to reach OPNsense API"
+    except Exception:
+        return False, "Unexpected OPNsense API error"
 
 
 def set_rule_enabled(enabled):
@@ -229,13 +229,13 @@ def get_rule_enabled():
         try:
             error_body = exc.read().decode("utf-8", errors="replace")
             if error_body:
-                return None, redact_sensitive_text(f"HTTP {exc.code} from OPNsense API: {error_body}")
+                return None, f"HTTP {exc.code} from OPNsense API"
         except Exception:
             pass
         return None, f"HTTP {exc.code} from OPNsense API"
-    except urllib.error.URLError as exc:
-        return None, redact_sensitive_text(f"Failed to reach OPNsense API: {exc.reason}")
+    except urllib.error.URLError:
+        return None, "Failed to reach OPNsense API"
     except json.JSONDecodeError:
         return None, "OPNsense returned invalid JSON for rule status"
-    except Exception as exc:
-        return None, redact_sensitive_text(f"Unexpected OPNsense API error: {exc}")
+    except Exception:
+        return None, "Unexpected OPNsense API error"

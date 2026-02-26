@@ -12,7 +12,7 @@ def log_error(message, exc=None):
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
     entry = f"[{timestamp}] {redact_sensitive_text(message)}"
     if exc is not None:
-        entry += f" | {type(exc).__name__}: {redact_sensitive_text(exc)}"
+        entry += f" | {type(exc).__name__}"
     print(entry)
 
 def update_whitelist(data):
@@ -26,18 +26,18 @@ def update_whitelist(data):
             json.dump(data, f, indent=2)
         stop = subprocess.run(["systemctl", "stop", "minecraft"], capture_output=True, text=True)
         if stop.returncode != 0:
-            msg = redact_sensitive_text(f"Failed to stop server: {stop.stderr}")
+            msg = f"Failed to stop server (exit code {stop.returncode})"
             log_error(msg)
             return False, msg
         start = subprocess.run(["systemctl", "start", "minecraft"], capture_output=True, text=True)
         if start.returncode != 0:
-            msg = redact_sensitive_text(f"Failed to start server: {start.stderr}")
+            msg = f"Failed to start server (exit code {start.returncode})"
             log_error(msg)
             return False, msg
         return True, "Whitelist updated and server restarted"
     except Exception as e:
         log_error("update_whitelist exception", e)
-        return False, redact_sensitive_text(str(e))
+        return False, "Unexpected error while updating whitelist"
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

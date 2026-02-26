@@ -15,12 +15,16 @@ def log_error(message, exc=None):
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     entry = f"[{timestamp}] {redact_sensitive_text(message)}"
     if exc is not None:
-        entry += f" | {type(exc).__name__}: {redact_sensitive_text(exc)}"
+        entry += f" | {type(exc).__name__}"
     error_log.append(entry)
 
 
 def _safe_message(message):
     return redact_sensitive_text(message)
+
+
+def _subprocess_failure_message(script_name, returncode):
+    return f"{script_name} failed (exit code {returncode})"
 
 
 def _public_external_access_payload(external_access):
@@ -44,7 +48,7 @@ def get_connected_users():
         status = server.status()
         return status.players.online
     except Exception as e:
-        log_error(f"mcstatus error: {e}")
+        log_error("mcstatus query failed", e)
         return 0
 
 def start_server():
@@ -57,11 +61,12 @@ def start_server():
                 error_log.append(_safe_message(log_entry))
             return output.get("success", False), _safe_message(output.get("message", ""))
         else:
-            log_error(f"start_server.py failed: {result.stderr}")
-            return False, _safe_message(result.stderr)
+            failure_message = _subprocess_failure_message("start_server.py", result.returncode)
+            log_error(failure_message)
+            return False, failure_message
     except Exception as e:
         log_error("start_server exception", e)
-        return False, _safe_message(str(e))
+        return False, "Unexpected error while starting server"
 
 def stop_server():
     try:
@@ -69,16 +74,16 @@ def stop_server():
         if result.returncode == 0:
             output = json.loads(result.stdout)
             success = output.get("success", False)
-            message = output.get("message", "")
-            if not success and message:
-                log_error(f"stop_server action failed: {message}")
-            return success, _safe_message(message)
+            if not success:
+                log_error("stop_server action failed")
+            return success, _safe_message(output.get("message", ""))
         else:
-            log_error(f"stop_server.py failed: {result.stderr}")
-            return False, _safe_message(result.stderr)
+            failure_message = _subprocess_failure_message("stop_server.py", result.returncode)
+            log_error(failure_message)
+            return False, failure_message
     except Exception as e:
         log_error("stop_server exception", e)
-        return False, _safe_message(str(e))
+        return False, "Unexpected error while stopping server"
 
 
 def allow_external_access():
@@ -91,15 +96,15 @@ def allow_external_access():
         if result.returncode == 0:
             output = json.loads(result.stdout)
             success = output.get("success", False)
-            message = output.get("message", "")
-            if not success and message:
-                log_error(f"allow_external_access action failed: {message}")
-            return success, _safe_message(message)
-        log_error(f"allow_external_access.py failed: {result.stderr}")
-        return False, _safe_message(result.stderr)
+            if not success:
+                log_error("allow_external_access action failed")
+            return success, _safe_message(output.get("message", ""))
+        failure_message = _subprocess_failure_message("allow_external_access.py", result.returncode)
+        log_error(failure_message)
+        return False, failure_message
     except Exception as e:
         log_error("allow_external_access exception", e)
-        return False, _safe_message(str(e))
+        return False, "Unexpected error while allowing external access"
 
 
 def disable_external_access():
@@ -112,15 +117,15 @@ def disable_external_access():
         if result.returncode == 0:
             output = json.loads(result.stdout)
             success = output.get("success", False)
-            message = output.get("message", "")
-            if not success and message:
-                log_error(f"disable_external_access action failed: {message}")
-            return success, _safe_message(message)
-        log_error(f"disable_external_access.py failed: {result.stderr}")
-        return False, _safe_message(result.stderr)
+            if not success:
+                log_error("disable_external_access action failed")
+            return success, _safe_message(output.get("message", ""))
+        failure_message = _subprocess_failure_message("disable_external_access.py", result.returncode)
+        log_error(failure_message)
+        return False, failure_message
     except Exception as e:
         log_error("disable_external_access exception", e)
-        return False, _safe_message(str(e))
+        return False, "Unexpected error while disabling external access"
 
 
 def test_discord_notification():
@@ -133,15 +138,15 @@ def test_discord_notification():
         if result.returncode == 0:
             output = json.loads(result.stdout)
             success = output.get("success", False)
-            message = output.get("message", "")
-            if not success and message:
-                log_error(f"test_discord_notification action failed: {message}")
-            return success, _safe_message(message)
-        log_error(f"test_discord_notification.py failed: {result.stderr}")
-        return False, _safe_message(result.stderr)
+            if not success:
+                log_error("test_discord_notification action failed")
+            return success, _safe_message(output.get("message", ""))
+        failure_message = _subprocess_failure_message("test_discord_notification.py", result.returncode)
+        log_error(failure_message)
+        return False, failure_message
     except Exception as e:
         log_error("test_discord_notification exception", e)
-        return False, _safe_message(str(e))
+        return False, "Unexpected error while testing Discord notification"
 
 
 def get_external_access_status():
@@ -159,7 +164,7 @@ def get_external_access_status():
             text=True,
         )
         if result.returncode != 0:
-            log_error(f"get_external_access_status.py failed: {result.stderr}")
+            log_error(_subprocess_failure_message("get_external_access_status.py", result.returncode))
             return default_status
 
         output = json.loads(result.stdout)
@@ -184,11 +189,12 @@ def update_whitelist(data):
             output = json.loads(result.stdout)
             return output.get("success", False), _safe_message(output.get("message", ""))
         else:
-            log_error(f"update_whitelist.py failed: {result.stderr}")
-            return False, _safe_message(result.stderr)
+            failure_message = _subprocess_failure_message("update_whitelist.py", result.returncode)
+            log_error(failure_message)
+            return False, failure_message
     except Exception as e:
         log_error("update_whitelist exception", e)
-        return False, _safe_message(str(e))
+        return False, "Unexpected error while updating whitelist"
 
 def get_whitelist_json():
     whitelist_path = "/opt/minecraft/whitelist.json"
@@ -197,7 +203,7 @@ def get_whitelist_json():
             data = json.load(f)
         return json.dumps(data, indent=2)
     except Exception as e:
-        log_error(f"Failed to load whitelist.json: {e}")
+        log_error("Failed to load whitelist.json", e)
         return "[]"
 
 def get_error_log():
@@ -283,7 +289,7 @@ def whitelist():
     try:
         data = json.loads(request.form["whitelistBox"])
     except Exception as e:
-        log_error(f"Invalid JSON in whitelist: {e}")
+        log_error("Invalid JSON in whitelist", e)
         return redirect(url_for("index"))
     success, msg = update_whitelist(data)
     time.sleep(0.1)  # Ensure file write completes
