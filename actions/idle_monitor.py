@@ -4,6 +4,7 @@ import time
 from datetime import datetime, UTC
 
 from mcstatus import JavaServer
+from redaction import redact_sensitive_text
 
 try:
     from discord_notify import send_discord_notification
@@ -23,7 +24,7 @@ DEFAULT_SERVER_PORT = 25565
 
 def log(message: str) -> None:
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
-    print(f"[{timestamp}] {message}", flush=True)
+    print(f"[{timestamp}] {redact_sensitive_text(message)}", flush=True)
 
 
 def read_server_target() -> tuple[str, int]:
